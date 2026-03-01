@@ -1,0 +1,149 @@
+
+# Loads default set of integrations. Do not remove.
+default_config:
+
+# Load frontend themes from the themes folder
+frontend:
+  themes: !include_dir_merge_named themes
+
+automation: !include automations.yaml
+script: !include scripts.yaml
+scene: !include scenes.yaml
+
+recorder:
+  purge_keep_days: 15
+  commit_interval: 30
+  #exclude:
+    #entities:
+      #- sensor.animatronico_pico_de_volumen
+
+
+# ============================================================================
+# REST SENSOR - Para monitoreo en tiempo real
+# ============================================================================
+# Sensores para monitorear dispositivos Android en tiempo real
+# Adapta las IPs de los dispositivos según tu configuración
+
+rest:
+  - scan_interval: 30
+    resource: "http://192.168.0.251:9123/"
+    sensor:
+      - name: "ADB API Health"
+        unique_id: adb_api_health
+        value_template: "{{ value_json.status }}" 
+        
+
+  # ========== DISPOSITIVO 1: SALA ==========
+
+  # Sensor para dispositivo 1 - Aplicación actual
+  - resource: http://192.168.0.251:9123/device/current-app?device_ip=192.168.0.161
+    scan_interval: 300
+    sensor:
+      - name: "ADB Current App - Sala"
+        unique_id: adb_current_app_sala
+        json_attributes_path: "$.current_app"
+        value_template: "{{ value_json.current_app.package | default('No app') }}"
+        json_attributes:
+          - "package"
+          - "activity"
+          - "info"
+        icon: mdi:application
+
+
+
+
+# ============================================================================
+# REST COMMANDS - Forma nativa de Home Assistant para HTTP requests
+# ============================================================================
+# rest_command es la alternativa moderna a shell_command
+# Ventajas: NO necesita curl, es más limpio, seguro e integrado nativamente
+
+rest_command:
+  # ========== Device Management ==========
+  adb_connect_device:
+    url: "http://192.168.0.251:9123/devices/connect?ip={{ device_ip }}&port=5555"
+    method: POST
+  
+  adb_disconnect_device:
+    url: "http://192.168.0.251:9123/devices/disconnect?device_ip={{ device_ip }}"
+    method: POST
+  
+  adb_list_devices:
+    url: "http://192.168.0.251:9123/devices"
+    method: GET
+  
+  adb_check_status:
+    url: "http://192.168.0.251:9123/status?device_ip={{ device_ip }}"
+    method: GET
+  
+  adb_health:
+    url: "http://192.168.0.251:9123/"
+    method: GET
+  
+  # ========== Device Information ==========
+  adb_device_info:
+    url: "http://192.168.0.251:9123/device/info?device_ip={{ device_ip }}"
+    method: GET
+  
+  adb_current_app:
+    url: "http://192.168.0.251:9123/device/current-app?device_ip={{ device_ip }}"
+    method: GET
+  
+  adb_installed_apps:
+    url: "http://192.168.0.251:9123/device/installed-apps?device_ip={{ device_ip }}&limit=30"
+    method: GET
+  
+  adb_logcat:
+    url: "http://192.168.0.251:9123/device/logcat?device_ip={{ device_ip }}&lines=50"
+    method: GET
+  
+  # ========== Volume Control ==========
+  adb_volume_current:
+    url: "http://192.168.0.251:9123/device/volume/current?device_ip={{ device_ip }}"
+    method: GET
+  
+  adb_volume_up:
+    url: "http://192.168.0.251:9123/device/volume/increase?device_ip={{ device_ip }}&steps={{ steps | default(1) }}"
+    method: POST
+  
+  adb_volume_down:
+    url: "http://192.168.0.251:9123/device/volume/decrease?device_ip={{ device_ip }}&steps={{ steps | default(1) }}"
+    method: POST
+  
+  adb_volume_mute:
+    url: "http://192.168.0.251:9123/device/volume/mute?device_ip={{ device_ip }}"
+    method: POST
+  
+  adb_volume_set:
+    url: "http://192.168.0.251:9123/device/volume/set?device_ip={{ device_ip }}&level={{ level }}"
+    method: POST
+  
+  # ========== Video Control ==========
+  adb_play_video:
+    url: "http://192.168.0.251:9123/play?device_ip={{ device_ip }}&video_url={{ video_url }}"
+    method: POST
+  
+  adb_pause_video:
+    url: "http://192.168.0.251:9123/stop?device_ip={{ device_ip }}"
+    method: POST
+  
+  adb_exit_app:
+    url: "http://192.168.0.251:9123/exit?device_ip={{ device_ip }}"
+    method: POST
+  
+  # ========== Device Operations ==========
+  adb_custom_command:
+    url: "http://192.168.0.251:9123/command?device_ip={{ device_ip }}&command={{ command }}"
+    method: POST
+    
+    
+proxmoxve:
+  - host: 192.168.0.216
+    username: root
+    password: 001Debian12
+    verify_ssl: false
+    realm: pam
+    nodes:
+      - node: pimox-raspi
+        vms:
+          - 104

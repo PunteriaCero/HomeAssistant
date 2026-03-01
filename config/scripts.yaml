@@ -1,0 +1,548 @@
+play_urbana:
+  alias: Play Urbana
+  description: ''
+  sequence:
+  - variables:
+      contador: 0
+  - type: turn_on
+    device_id: fc7f4860e492c881ee2935dc5da1dd19
+    entity_id: 99bbbbdbabccb38e814a87d5caf0e1da
+    domain: switch
+  - repeat:
+      sequence:
+      - variables:
+          contador: '{{ contador | int + 1 }}'
+      - delay:
+          hours: 0
+          minutes: 0
+          seconds: 5
+          milliseconds: 0
+      until:
+      - condition: or
+        conditions:
+        - condition: template
+          value_template: '{{ contador | int >= 30 }}'
+        - condition: not
+          conditions:
+          - condition: state
+            entity_id: media_player.comedor
+            state: unavailable
+  - condition: and
+    conditions:
+    - condition: template
+      value_template: '{{ contador | int < 30 }}'
+  - action: media_player.volume_set
+    metadata: {}
+    data:
+      volume_level: 0.06
+    target:
+      device_id: 48a0ff0c7d8ef9066b797c9ba519d264
+  - action: media_player.play_media
+    target:
+      entity_id: media_player.comedor
+    data:
+      media_content_id: media-source://radio_browser/78ae7b0c-cd9f-42d5-847d-6a41b578bb97
+      media_content_type: audio/aac
+    metadata:
+      title: Urbana Play 104.4
+      thumbnail: ''
+      media_class: music
+      children_media_class:
+      navigateIds:
+      - {}
+      - media_content_type: app
+        media_content_id: media-source://radio_browser
+      - media_content_type: music
+        media_content_id: media-source://radio_browser/country/AR
+  - variables:
+      contador: 0
+  - repeat:
+      sequence:
+      - variables:
+          contador: '{{ contador | int + 1 }}'
+      - delay:
+          hours: 0
+          minutes: 0
+          seconds: 5
+          milliseconds: 0
+      until:
+      - condition: or
+        conditions:
+        - condition: template
+          value_template: '{{ contador | int >= 20 }}'
+        - condition: state
+          entity_id: media_player.comedor
+          state: playing
+          for:
+            hours: 0
+            minutes: 0
+            seconds: 10
+  fields: {}
+play_despertador:
+  sequence:
+  - type: turn_on
+    device_id: 7a20aac61fe7113546527099bd7f0503
+    entity_id: 128a1ef8b8a9060e9e6046fb3ecf55ae
+    domain: remote
+  - action: media_player.volume_set
+    metadata: {}
+    data:
+      volume_level: 0.1
+    target:
+      entity_id: media_player.tv_del_dormitorio
+  - action: androidtv.adb_command
+    target:
+      entity_id: media_player.android_tv_dormitorio
+    data:
+      command: am start -a android.intent.action.VIEW -d https://www.youtube.com/watch?v=fT3l5A7JiCg
+  alias: Play Despertador
+  description: ''
+  fields: {}
+  mode: restart
+ver_video_en_cocina:
+  sequence:
+  - type: turn_on
+    device_id: c1d988be8c2a7ca0e83e68529bf1f9f9
+    entity_id: de60b3812be5b9f1b4df69d21914c51e
+    domain: remote
+  - action: androidtv.adb_command
+    target:
+      entity_id:
+      - media_player.fire_tv_192_168_0_189
+    data:
+      command: am start -a android.intent.action.VIEW -d https://www.youtube.com/watch?v=fT3l5A7JiCg
+  alias: Ver video en Cocina
+  description: ''
+  fields: {}
+  mode: single
+adb_device:
+  description: Gestión de dispositivos ADB (conectar, desconectar, listar, estado)
+  fields:
+    action:
+      description: Acción a realizar
+      selector:
+        select:
+          options:
+          - connect
+          - disconnect
+          - list
+          - status
+          - health
+      default: status
+    device_ip:
+      description: 'IP del dispositivo (requerido para: disconnect, status)'
+      example: 192.168.0.161
+      default: 192.168.0.161
+    port:
+      description: 'Puerto (opcional, default: 5555 para connect)'
+      example: 5555
+  sequence:
+  - condition: template
+    value_template: '{{ action is defined and action | length > 0 }}'
+  - choose:
+    - conditions:
+      - condition: template
+        value_template: '{{ action == ''connect'' }}'
+      sequence:
+      - condition: template
+        value_template: '{{ ip is defined and ip | length > 0 }}'
+      - data:
+          device_ip: '{{ device_ip }}'
+        response_variable: result
+        action: rest_command.adb_connect_device
+      - data:
+          message: 'Conectando a {{ device_ip }}: {{ result.status }}'
+        action: notify.notify
+    - conditions:
+      - condition: template
+        value_template: '{{ action == ''disconnect'' }}'
+      sequence:
+      - condition: template
+        value_template: '{{ device_ip is defined and device_ip | length > 0 }}'
+      - data:
+          device_ip: '{{ device_ip }}'
+        response_variable: result
+        action: rest_command.adb_disconnect_device
+      - data:
+          message: 'Desconectando {{ device_ip }}: {{ result.status }}'
+        action: notify.notify
+    - conditions:
+      - condition: template
+        value_template: '{{ action == ''list'' }}'
+      sequence:
+      - response_variable: result
+        action: rest_command.adb_list_devices
+      - data:
+          message: 'Dispositivos listados: {{ result.json | length }} dispositivos'
+        action: notify.notify
+    - conditions:
+      - condition: template
+        value_template: '{{ action == ''status'' }}'
+      sequence:
+      - condition: template
+        value_template: '{{ device_ip is defined and device_ip | length > 0 }}'
+      - data:
+          device_ip: '{{ device_ip }}'
+        response_variable: result
+        action: rest_command.adb_check_status
+      - data:
+          message: 'Estado: {{ result.json.status | default(''desconocido'') }}'
+        action: notify.notify
+    - conditions:
+      - condition: template
+        value_template: '{{ action == ''health'' }}'
+      sequence:
+      - response_variable: result
+        action: rest_command.adb_health
+      - data:
+          message: 'API Status: {{ result.json.status | default(''OK'') }}'
+        action: notify.notify
+    default:
+    - data:
+        message: 'ERROR adb_device: Acción ''{{ action }}'' desconocida. Use: connect,
+          disconnect, list, status o health'
+      action: notify.notify
+adb_info:
+  description: Información del dispositivo (info, app actual, apps instaladas, logs)
+  fields:
+    action:
+      description: Acción a realizar
+      selector:
+        select:
+          options:
+          - info
+          - current_app
+          - installed_apps
+          - logcat
+      default: current_app
+    device_ip:
+      description: IP del dispositivo Android
+      example: 192.168.0.161
+      default: 192.168.0.161
+    limit:
+      description: 'Límite de apps (para installed_apps, default: 30)'
+      example: 30
+    lines:
+      description: 'Número de líneas de log (para logcat, default: 50)'
+      example: 50
+  sequence:
+  - condition: template
+    value_template: '{{ device_ip is defined and device_ip | length > 0 }}'
+  - condition: template
+    value_template: '{{ action is defined and action | length > 0 }}'
+  - choose:
+    - conditions:
+      - condition: template
+        value_template: '{{ action == ''info'' }}'
+      sequence:
+      - data:
+          device_ip: '{{ device_ip }}'
+        response_variable: result
+        action: rest_command.adb_device_info
+      - data:
+          message: 'Info: {{ result.json | to_json }}'
+        action: notify.notify
+    - conditions:
+      - condition: template
+        value_template: '{{ action == ''current_app'' }}'
+      sequence:
+      - data:
+          device_ip: '{{ device_ip }}'
+        response_variable: result
+        action: rest_command.adb_current_app
+      - data:
+          message: 'App actual: {{ result.json.app_name | default(''N/A'') }}'
+        action: notify.notify
+    - conditions:
+      - condition: template
+        value_template: '{{ action == ''installed_apps'' }}'
+      sequence:
+      - data:
+          device_ip: '{{ device_ip }}'
+        response_variable: result
+        action: rest_command.adb_installed_apps
+      - data:
+          message: 'Instaladas: {{ result.json | length }} apps'
+        action: notify.notify
+    - conditions:
+      - condition: template
+        value_template: '{{ action == ''logcat'' }}'
+      sequence:
+      - data:
+          device_ip: '{{ device_ip }}'
+        response_variable: result
+        action: rest_command.adb_logcat
+      - data:
+          message: 'Logcat obtenido: {{ result.json | length }} líneas'
+        action: notify.notify
+    default:
+    - data:
+        message: 'ERROR adb_info: Acción ''{{ action }}'' desconocida. Use: info,
+          current_app, installed_apps o logcat'
+      action: notify.notify
+adb_volume:
+  description: Control de volumen (get, up, down, set, mute)
+  fields:
+    action:
+      description: Acción a realizar
+      selector:
+        select:
+          options:
+          - get
+          - up
+          - down
+          - set
+          - mute
+      default: get
+    device_ip:
+      description: IP del dispositivo Android
+      example: 192.168.0.161
+      default: 192.168.0.161
+    steps:
+      description: 'Pasos para up/down (default: 1) o nivel para set (0-15)'
+      example: 1
+  sequence:
+  - condition: template
+    value_template: '{{ device_ip is defined and device_ip | length > 0 }}'
+  - condition: template
+    value_template: '{{ action is defined and action | length > 0 }}'
+  - choose:
+    - conditions:
+      - condition: template
+        value_template: '{{ action == ''get'' }}'
+      sequence:
+      - service: rest_command.adb_volume_current
+        data:
+          device_ip: '{{ device_ip }}'
+        response_variable: result
+      - service: notify.notify
+        data:
+          message: 'Volumen: {{ result.json.level | default(''N/A'') }}/15'
+    - conditions:
+      - condition: template
+        value_template: '{{ action == ''up'' }}'
+      sequence:
+      - service: rest_command.adb_volume_up
+        data:
+          device_ip: '{{ device_ip }}'
+          steps: '{{ steps | default(1) }}'
+        response_variable: result
+      - service: notify.notify
+        data:
+          message: Volumen +{{ steps | default(1) }} → {{ result.json.level | default('N/A')
+            }}
+    - conditions:
+      - condition: template
+        value_template: '{{ action == ''down'' }}'
+      sequence:
+      - service: rest_command.adb_volume_down
+        data:
+          device_ip: '{{ device_ip }}'
+          steps: '{{ steps | default(1) }}'
+        response_variable: result
+      - service: notify.notify
+        data:
+          message: Volumen -{{ steps | default(1) }} → {{ result.json.level | default('N/A')
+            }}
+    - conditions:
+      - condition: template
+        value_template: '{{ action == ''set'' }}'
+      sequence:
+      - condition: template
+        value_template: '{{ steps is defined and steps | int(0) >= 0 and steps | int(0)
+          <= 15 }}'
+      - service: rest_command.adb_volume_set
+        data:
+          device_ip: '{{ device_ip }}'
+          level: '{{ steps }}'
+        response_variable: result
+      - service: notify.notify
+        data:
+          message: 'Volumen fijado a {{ steps }}/15: {{ result.json.status | default(''OK'')
+            }}'
+    - conditions:
+      - condition: template
+        value_template: '{{ action == ''mute'' }}'
+      sequence:
+      - service: rest_command.adb_volume_mute
+        data:
+          device_ip: '{{ device_ip }}'
+        response_variable: result
+      - service: notify.notify
+        data:
+          message: 'Silenciado: {{ result.json.status | default(''OK'') }}'
+    default:
+    - service: notify.notify
+      data:
+        message: 'ERROR adb_volume: Acción ''{{ action }}'' desconocida. Use: get,
+          up, down, set o mute'
+adb_media:
+  description: Control de medios (play, pause, exit)
+  fields:
+    action:
+      description: Acción a realizar
+      selector:
+        select:
+          options:
+          - play
+          - pause
+          - exit
+      default: play
+    device_ip:
+      description: IP del dispositivo Android
+      example: 192.168.0.161
+      default: 192.168.0.161
+    video_url:
+      description: 'URL de video (requerido para: play)'
+      example: https://www.youtube.com/watch?v=VIDEO_ID
+  sequence:
+  - condition: template
+    value_template: '{{ device_ip is defined and device_ip | length > 0 }}'
+  - condition: template
+    value_template: '{{ action is defined and action | length > 0 }}'
+  - choose:
+    - conditions:
+      - condition: template
+        value_template: '{{ action == ''play'' }}'
+      sequence:
+      - condition: template
+        value_template: '{{ video_url is defined and video_url | length > 0 }}'
+      - service: rest_command.adb_play_video
+        data:
+          device_ip: '{{ device_ip }}'
+          video_url: '{{ video_url }}'
+        response_variable: result
+      - delay:
+          seconds: 2
+      - service: notify.notify
+        data:
+          message: 'Reproduciéndose: {{ result.json.status | default(''OK'') }}'
+    - conditions:
+      - condition: template
+        value_template: '{{ action == ''pause'' }}'
+      sequence:
+      - service: rest_command.adb_pause_video
+        data:
+          device_ip: '{{ device_ip }}'
+        response_variable: result
+      - service: notify.notify
+        data:
+          message: 'Pausado: {{ result.json.status | default(''OK'') }}'
+    - conditions:
+      - condition: template
+        value_template: '{{ action == ''exit'' }}'
+      sequence:
+      - service: rest_command.adb_exit_app
+        data:
+          device_ip: '{{ device_ip }}'
+        response_variable: result
+      - service: notify.notify
+        data:
+          message: 'Cerrada: {{ result.json.status | default(''OK'') }}'
+    default:
+    - service: notify.notify
+      data:
+        message: 'ERROR adb_media: Acción ''{{ action }}'' desconocida. Use: play,
+          pause o exit'
+adb_system:
+  description: Operaciones del sistema (screenshot, comando)
+  fields:
+    action:
+      description: Acción a realizar
+      selector:
+        select:
+          options:
+          - screenshot
+          - command
+      default: screenshot
+    device_ip:
+      description: IP del dispositivo Android
+      example: 192.168.0.161
+      default: 192.168.0.161
+    command:
+      description: 'Comando ADB a ejecutar (requerido para: command)'
+      example: pm list packages
+  sequence:
+  - condition: template
+    value_template: '{{ device_ip is defined and device_ip | length > 0 }}'
+  - condition: template
+    value_template: '{{ action is defined and action | length > 0 }}'
+  - choose:
+    - conditions:
+      - condition: template
+        value_template: '{{ action == ''screenshot'' }}'
+      sequence:
+      - service: rest_command.adb_check_status
+        data:
+          device_ip: '{{ device_ip }}'
+        response_variable: result
+      - service: notify.notify
+        data:
+          message: 'Screenshot: {{ result.json.status | default(''OK'') }}'
+    - conditions:
+      - condition: template
+        value_template: '{{ action == ''command'' }}'
+      sequence:
+      - condition: template
+        value_template: '{{ command is defined and command | length > 0 }}'
+      - service: rest_command.adb_custom_command
+        data:
+          device_ip: '{{ device_ip }}'
+          command: '{{ command }}'
+        response_variable: result
+      - service: notify.notify
+        data:
+          message: 'Comando: {{ result.json | to_json }}'
+    default:
+    - service: notify.notify
+      data:
+        message: 'ERROR adb_system: Acción ''{{ action }}'' desconocida. Use: screenshot
+          o command'
+adb_health:
+  sequence:
+  - action: rest_command.adb_health
+    metadata: {}
+    data: {}
+    response_variable: data
+  fields:
+    field1:
+      selector:
+        text:
+      required: true
+      name: field1
+    field_2:
+      selector:
+        text:
+      required: true
+  alias: adb_health
+  description: ''
+current_app:
+  sequence:
+  - action: rest_command.adb_current_app
+    metadata: {}
+    data:
+      device_ip: '{{ field }}'
+    response_variable: adb_response
+  fields:
+    field:
+      selector:
+        text:
+      default: 192.168.0.161
+      required: true
+  alias: adb_current_app
+  description: ''
+adb_connect:
+  sequence:
+  - action: rest_command.adb_current_app
+    metadata: {}
+    data:
+      device_ip: field
+    response_variable: response
+  fields:
+    field:
+      selector:
+        text:
+      default: 192.168.0.161
+      required: true
+  alias: adb_connect
+  description: ''

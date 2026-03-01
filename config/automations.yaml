@@ -1,0 +1,605 @@
+- id: '1753841890398'
+  alias: Registrar Última Vez que Dejó de Llover (Met.no)
+  description: 'Actualiza el helper ''LastRain'' cuando la entidad de pronóstico de
+    Met.no cambia de un estado de lluvia a un estado sin lluvia.
+
+    '
+  triggers:
+  - entity_id: weather.forecast_tu_ubicacion
+    from:
+    - rainy
+    - pouring
+    - lightning-rainy
+    - snowy-rainy
+    - hail
+    to:
+    - sunny
+    - clear-night
+    - cloudy
+    - partlycloudy
+    - fog
+    - windy
+    - windy-variant
+    trigger: state
+  actions:
+  - target:
+      entity_id: input_datetime.last_rain
+    data:
+      datetime: '{{ now() }}'
+    action: input_datetime.set_datetime
+  mode: single
+- id: '1753842469550'
+  alias: Amancer
+  description: ''
+  triggers:
+  - type: voltage
+    device_id: 24375f90f30a39cac374d18a076abef4
+    entity_id: fc691819261e7c7d395cd1fce66de685
+    domain: sensor
+    trigger: device
+    above: 0.9
+  conditions:
+  - condition: state
+    entity_id: input_boolean.amanecido
+    state: 'off'
+  actions:
+  - action: input_boolean.turn_on
+    metadata: {}
+    data: {}
+    target:
+      entity_id: input_boolean.amanecido
+    enabled: true
+  - device_id: 2dbc8cc35ece5ecde58e5aac464a5fdb
+    domain: cover
+    entity_id: 687cd7257699abecc3c111baf103c635
+    type: stop
+  - device_id: 2dbc8cc35ece5ecde58e5aac464a5fdb
+    domain: cover
+    entity_id: 687cd7257699abecc3c111baf103c635
+    type: set_position
+    position: 0
+  mode: single
+- id: '1753843652744'
+  alias: Anochecer
+  description: ''
+  triggers:
+  - type: voltage
+    device_id: 24375f90f30a39cac374d18a076abef4
+    entity_id: fc691819261e7c7d395cd1fce66de685
+    domain: sensor
+    trigger: device
+    below: 0.9
+  - type: occupied
+    device_id: 7e22794b7fa11ac3adbe6e02add76289
+    entity_id: f791f1f2ae288c8a298dfe33f1ff5fdb
+    domain: binary_sensor
+    trigger: device
+  conditions:
+  - condition: state
+    entity_id: input_boolean.amanecido
+    state: 'on'
+  - type: is_occupied
+    condition: device
+    device_id: 7e22794b7fa11ac3adbe6e02add76289
+    entity_id: f791f1f2ae288c8a298dfe33f1ff5fdb
+    domain: binary_sensor
+  - type: is_voltage
+    condition: device
+    device_id: 24375f90f30a39cac374d18a076abef4
+    entity_id: fc691819261e7c7d395cd1fce66de685
+    domain: sensor
+    below: 0.9
+    enabled: true
+  actions:
+  - action: input_boolean.turn_off
+    metadata: {}
+    data: {}
+    target:
+      entity_id: input_boolean.amanecido
+  - device_id: 2dbc8cc35ece5ecde58e5aac464a5fdb
+    domain: cover
+    entity_id: 687cd7257699abecc3c111baf103c635
+    type: stop
+    enabled: true
+  - device_id: 2dbc8cc35ece5ecde58e5aac464a5fdb
+    domain: cover
+    entity_id: 687cd7257699abecc3c111baf103c635
+    type: set_position
+    position: 81
+  - condition: state
+    entity_id: light.lightsliving
+    state: 'off'
+  - condition: state
+    entity_id: switch.audio_socket_1
+    state: 'off'
+  - type: turn_on
+    device_id: 6fd91b0a3a206a9736ab538e84fce86a
+    entity_id: 8471610af2ee262dd47cbf6e8d8ca736
+    domain: switch
+  mode: single
+- id: '1753937397778'
+  alias: sync
+  description: Mantiene el estado del switch del media player sincronizado con un
+    segundo switch.
+  triggers:
+  - entity_id:
+    - switch.radiourbana
+    - switch.cocina_switch_1
+    trigger: state
+    to: 'on'
+  - entity_id:
+    - switch.cocina_switch_1
+    - switch.radiourbana
+    trigger: state
+    to: 'off'
+  conditions: []
+  actions:
+  - target:
+      entity_id: "{% if trigger.entity_id == 'switch.cocina_switch_1' %}\n  switch.radiourbana\n{%
+        else %}\n  switch.cocina_switch_1\n{% endif %}\n"
+    action: homeassistant.turn_{{ trigger.to_state.state }}
+  mode: parallel
+  max: 3
+- id: '1753939065304'
+  alias: Nadie en el living
+  description: ''
+  triggers:
+  - type: not_occupied
+    device_id: 7e22794b7fa11ac3adbe6e02add76289
+    entity_id: f791f1f2ae288c8a298dfe33f1ff5fdb
+    domain: binary_sensor
+    trigger: device
+    for:
+      hours: 0
+      minutes: 30
+      seconds: 0
+  conditions:
+  - type: is_power
+    condition: device
+    device_id: fc7f4860e492c881ee2935dc5da1dd19
+    entity_id: 6274be7c818ad8256f67757a985d96f5
+    domain: sensor
+    below: 100
+  actions:
+  - action: light.turn_off
+    metadata: {}
+    data: {}
+    target:
+      entity_id: light.lightsliving
+    enabled: true
+  mode: single
+- id: '1753940840631'
+  alias: despertador
+  description: ''
+  triggers:
+  - trigger: time
+    at: 08:00:00
+  conditions:
+  - condition: time
+    weekday:
+    - mon
+    - tue
+    - wed
+    - thu
+    - fri
+  actions:
+  - action: script.play_despertador
+    metadata: {}
+    data: {}
+  mode: single
+- id: '1754015021935'
+  alias: Sync_UrbanaDormitorioAtico
+  description: Mantiene el estado del switch del media player sincronizado con un
+    segundo switch.
+  triggers:
+  - entity_id:
+    - switch.urbanadormitorio
+    - switch.atico_switch_3
+    trigger: state
+    to:
+    - 'on'
+    - 'off'
+  conditions: []
+  actions:
+  - target:
+      entity_id: "{% if trigger.entity_id == 'switch.atico_switch_3' %}\n  switch.urbanadormitorio\n{%
+        else %}\n  switch.atico_switch_3\n{% endif %}\n"
+    action: homeassistant.turn_{{ trigger.to_state.state }}
+  mode: parallel
+  max: 3
+- id: '1757285376079'
+  alias: 11pm
+  description: ''
+  triggers:
+  - trigger: time
+    at: '23:00:00'
+  conditions: []
+  actions:
+  - type: turn_on
+    device_id: fe6b2648c9ce2bdb008d97173aed0500
+    entity_id: 836197f03ae5dceb82b7cd6208e8bfdc
+    domain: switch
+  mode: single
+- id: '1761390130570'
+  alias: sin corriente
+  description: ''
+  triggers:
+  - trigger: state
+    entity_id:
+    - sensor.breaker_phase_a_current
+    to: unavailable
+    for:
+      hours: 0
+      minutes: 10
+      seconds: 0
+  conditions: []
+  actions:
+  - action: backup.create
+    metadata: {}
+    data: {}
+  mode: single
+- id: '1763435782981'
+  alias: rfid_tag
+  description: ''
+  triggers:
+  - tag_id: 14-14-7E-A7
+    trigger: tag
+  - tag_id: AB-CE-BF-1B
+    trigger: tag
+  - tag_id: 63-91-29-21
+    trigger: tag
+  conditions: []
+  actions:
+  - variables:
+      tag_hugo: 14-14-7E-A7
+      tag_lolo: AB-CE-BF-1B
+      tag_admin: 63-91-29-21
+      mode_proyector: TvProyector
+      mode_cocina: TvCocina
+      target_counter: "{% set tag = trigger.event.data.tag_id %}\n{% if tag == tag_lolo
+        %}\n  counter.credito_lolo\n{% elif tag == tag_hugo %}\n  counter.credito_hugo\n{%
+        else %}\n  none\n{% endif %}\n"
+      titular_name: "{% set tag = trigger.event.data.tag_id %}\n{% if tag == tag_lolo
+        %}\n  Lolo\n{% elif tag == tag_hugo %}\n  Hugo\n{% else %}\n  Desconocido\n{%
+        endif %}\n"
+      is_admin_tag: '{{ trigger.event.data.tag_id == tag_admin }}'
+      current_mode: '{{ states(''input_select.rfid_selector'') }}'
+      target_timer: "{% if current_mode == mode_proyector %}\n  timer.timer_tvproyector\n{%
+        elif current_mode == mode_cocina %}\n  timer.timer_tvcocina\n{% else %}\n
+        \ timer.timer_tvcocina\n{% endif %}\n"
+      target_switch: "{% if current_mode == mode_cocina %}\n  switch.enchufe_tv_socket_1\n{%
+        elif current_mode == mode_proyector %}\n  switch.audio_socket_1\n{% else %}\n
+        \ none\n{% endif %}\n"
+  - if:
+    - condition: template
+      value_template: '{{ is_admin_tag }}'
+    then:
+    - if:
+      - condition: template
+        value_template: '{{ target_switch != ''none'' }}'
+      then:
+      - data:
+          value: Me:d=4,o=5,b=200:g#,32p,g#,g,f,g,1p,g,g,g#,a#,d#,0p,c,2d#,32p,f,g,2f,32p,d#,d,2d#,2p
+        target:
+          entity_id: text.lectorrfid_melodia_buzzer_rtttl
+        action: text.set_value
+      - target:
+          entity_id: button.lectorrfid_parpadeo_corto
+        action: button.press
+        data: {}
+      - data:
+          value: '{% set toggled_state = states(target_switch) %} {% set new_state
+            = ''off'' if toggled_state == ''on'' else ''on'' %} {{ current_mode }}:
+            {{ new_state }}'
+        target:
+          entity_id: text.lectorrfid_mensaje_pantalla_lcd
+        action: text.set_value
+      - target:
+          entity_id: '{{ target_switch }}'
+        action: switch.toggle
+        data: {}
+      - target:
+          entity_id: button.lectorrfid_buzzer
+        action: button.press
+        data: {}
+      else:
+      - target:
+          entity_id: button.lectorrfid_parpadeo_largo
+        action: button.press
+        data: {}
+      - data:
+          value: Modo Admin:;Sin switch
+        target:
+          entity_id: text.lectorrfid_mensaje_pantalla_lcd
+        action: text.set_value
+    else:
+    - if:
+      - condition: template
+        value_template: '{{ target_counter != ''none'' }}'
+      then:
+      - if:
+        - condition: template
+          value_template: '{{ current_mode == mode_proyector or current_mode == mode_cocina
+            }}
+
+            '
+        then:
+        - if:
+          - condition: template
+            value_template: '{{ states(target_counter) | int > 0 }}'
+          then:
+          - target:
+              entity_id: button.lectorrfid_parpadeo_corto
+            action: button.press
+            data: {}
+          - target:
+              entity_id: '{{ target_counter }}'
+            action: counter.decrement
+            data: {}
+          - variables:
+              display_time_seconds: "{% set finish_time = state_attr(target_timer,
+                'finishes_at') %} {% if finish_time and is_state(target_timer, 'active')
+                %}\n  {% set time_left_td = (as_datetime(finish_time) - now()) %}\n
+                \ {% set total_seconds = time_left_td.total_seconds() + 1800 %}\n
+                \ {{ [0, total_seconds] | max | int }}\n{% else %}\n  1800\n{% endif
+                %}\n"
+              new_duration: '{% set total_seconds = display_time_seconds | int %}
+                {% set hours = (total_seconds // 3600) | int %} {% set minutes = ((total_seconds
+                % 3600) // 60) + 1 | int %} {{ "%02i:%02i" | format(hours, minutes)
+                }}
+
+                '
+          - data:
+              duration: '{{ new_duration }}'
+            target:
+              entity_id: '{{ target_timer }}'
+            action: timer.start
+          - data:
+              value: '{{ new_duration + ";" + titular_name + ": " + states(target_counter)
+                }}'
+            target:
+              entity_id: text.lectorrfid_mensaje_pantalla_lcd
+            action: text.set_value
+          - data:
+              value: Wonderboy:d=4,o=5,b=225:f6,d6,f6,8d6,f6,32p,8f6,d6,f6,d6,e6,c6,e6,8c6,e6,32p,8e6,c6,e6,c6
+            target:
+              entity_id: text.lectorrfid_melodia_buzzer_rtttl
+            action: text.set_value
+          - target:
+              entity_id: button.lectorrfid_buzzer
+            action: button.press
+            data: {}
+          else:
+          - target:
+              entity_id: button.lectorrfid_parpadeo_largo
+            action: button.press
+            data: {}
+          - data:
+              value: '{{ titular_name + '':;Sin saldo'' }}'
+            target:
+              entity_id: text.lectorrfid_mensaje_pantalla_lcd
+            action: text.set_value
+        else:
+        - data:
+            value: '{{ ''Saldo '' + titular_name + '': ;'' + states(target_counter)
+              }}'
+          target:
+            entity_id: text.lectorrfid_mensaje_pantalla_lcd
+          action: text.set_value
+      else:
+      - data:
+          value: Tag Desconocido
+        target:
+          entity_id: text.lectorrfid_mensaje_pantalla_lcd
+        action: text.set_value
+      - target:
+          entity_id: button.lectorrfid_parpadeo_largo
+        action: button.press
+        data: {}
+  mode: single
+- id: '1763435931593'
+  alias: TimerEnd_TvCocina
+  description: ''
+  triggers:
+  - trigger: event
+    event_type: timer.finished
+    event_data:
+      entity_id: timer.timer_tvcocina
+  conditions: []
+  actions:
+  - type: turn_off
+    device_id: b6f5d65126135d89e56c5e189b3d8617
+    entity_id: c84507c15a1bb34cfff574c9e0aeda9c
+    domain: switch
+    enabled: true
+  mode: single
+- id: '1763865796036'
+  alias: rfid_button
+  description: ''
+  triggers:
+  - type: turned_on
+    device_id: c2f7eb203072b17456d277c2548e2320
+    entity_id: 0d97c489d9f38f30daf8947eafabfd22
+    domain: binary_sensor
+    trigger: device
+  conditions: []
+  actions:
+  - action: input_select.select_next
+    metadata: {}
+    data:
+      cycle: true
+    target:
+      entity_id: input_select.rfid_selector
+  mode: single
+- id: '1763865962905'
+  alias: RFID_Selector_change
+  description: ''
+  triggers:
+  - trigger: state
+    entity_id:
+    - input_select.rfid_selector
+  conditions: []
+  actions:
+  - variables:
+      timer_entity_id: "{% set mode = trigger.to_state.state %} {% if mode == 'TvProyector'
+        %}\n  timer.timer_tvproyector\n{% elif mode == 'TvCocina' %}\n  timer.timer_tvcocina\n{%
+        else %}\n  none\n{% endif %}\n"
+      timer_display_name: "{% set mode = trigger.to_state.state %} {% if mode == 'TvProyector'
+        %}\n  Proyector\n{% elif mode == 'TvCocina' %}\n  TV Cocina\n{% else %}\n
+        \ {{ mode }}\n{% endif %}\n"
+      time_left_seconds: "{% set finish_time = state_attr(timer_entity_id, 'finishes_at')
+        %}  {% if finish_time and is_state(timer_entity_id, 'active') %}\n  {% set
+        time_left_td = (as_datetime(finish_time) - now()) %}\n  {{ [0, time_left_td.total_seconds()]
+        | max | int(default=0) }}\n{% else %}\n  0\n{% endif %}\n"
+  - if:
+    - condition: template
+      value_template: '{{ trigger.to_state.state == ''TvProyector'' or trigger.to_state.state
+        == ''TvCocina'' }}
+
+        '
+    then:
+    - data:
+        value: '{% set total_seconds = time_left_seconds | int(default=0) %}  {% set
+          hours = (total_seconds // 3600) | int %}  {% set minutes = ((total_seconds
+          % 3600) // 60) | int %}
+
+          {{ timer_display_name + ":;%02i:%02i" | format(hours, minutes) }}
+
+          '
+      target:
+        entity_id: text.lectorrfid_mensaje_pantalla_lcd
+      action: text.set_value
+    else:
+    - action: text.set_value
+      data:
+        value: '{{ trigger.to_state.state }}'
+      target:
+        entity_id: text.lectorrfid_mensaje_pantalla_lcd
+  mode: single
+- id: rfid_regreso_automatico_inactividad_simplificado
+  alias: '[RFID] Regreso Automático a Primer Opción (Inactividad)'
+  description: 'Revierte el selector a la primera opción de la lista si no ha habido
+    cambios durante 20 segundos, independientemente del estado actual.
+
+    '
+  triggers:
+  - entity_id: input_select.rfid_selector
+    to: '{{ states(''input_select.rfid_selector'') }}'
+    for:
+      seconds: 20
+    trigger: state
+  conditions: []
+  actions:
+  - data:
+      option: Normal
+    target:
+      entity_id: input_select.rfid_selector
+    action: input_select.select_option
+  mode: single
+- id: rfid_regreso_automatico_inactividad_simplificado
+  alias: Regreso Automático a Primer Opción (Inactividad)
+  description: 'Revierte el selector a la primera opción de la lista si no ha habido
+    cambios durante 20 segundos, independientemente del estado actual.
+
+    '
+  triggers:
+  - entity_id: input_select.rfid_selector
+    to: '{{ states(''input_select.rfid_selector'') }}'
+    for:
+      seconds: 20
+    trigger: state
+  conditions: []
+  actions:
+  - data:
+      option: Normal
+    target:
+      entity_id: input_select.rfid_selector
+    action: input_select.select_option
+  mode: single
+- id: rfid_regreso_automatico_inactividad_simplificado
+  alias: rfid_selector _default
+  description: 'Revierte el selector a la primera opción de la lista si no ha habido
+    cambios durante 20 segundos, independientemente del estado actual.
+
+    '
+  triggers:
+  - entity_id: input_select.rfid_selector
+    to: '{{ states(''input_select.rfid_selector'') }}'
+    for:
+      seconds: 20
+    trigger: state
+  conditions: []
+  actions:
+  - data:
+      option: VerSaldo
+    target:
+      entity_id: input_select.rfid_selector
+    action: input_select.select_option
+  mode: single
+- id: '1763867207625'
+  alias: rfid_selector_timeout
+  description: ''
+  triggers:
+  - trigger: state
+    entity_id:
+    - input_select.rfid_selector
+    for:
+      hours: 0
+      minutes: 0
+      seconds: 30
+  conditions: []
+  actions:
+  - action: input_select.select_first
+    metadata: {}
+    data: {}
+    target:
+      entity_id: input_select.rfid_selector
+  mode: single
+- id: '1763906557598'
+  alias: TimerEnd_TvProyector
+  description: ''
+  triggers:
+  - trigger: event
+    event_type: timer.finished
+    event_data:
+      entity_id: timer.timer_tvproyector
+  conditions: []
+  actions:
+  - type: turn_off
+    device_id: fc7f4860e492c881ee2935dc5da1dd19
+    entity_id: 99bbbbdbabccb38e814a87d5caf0e1da
+    domain: switch
+    enabled: true
+  mode: single
+- id: '1763939922878'
+  alias: TimerOn_TvProyector
+  description: ''
+  triggers:
+  - trigger: state
+    entity_id:
+    - timer.timer_tvproyector
+    to: active
+  conditions: []
+  actions:
+  - type: turn_on
+    device_id: fc7f4860e492c881ee2935dc5da1dd19
+    entity_id: 99bbbbdbabccb38e814a87d5caf0e1da
+    domain: switch
+    enabled: true
+  mode: single
+- id: '1763939963719'
+  alias: TimerOn_TvCocina
+  description: ''
+  triggers:
+  - trigger: state
+    entity_id:
+    - timer.timer_tvcocina
+    to: active
+  conditions: []
+  actions:
+  - type: turn_on
+    device_id: b6f5d65126135d89e56c5e189b3d8617
+    entity_id: c84507c15a1bb34cfff574c9e0aeda9c
+    domain: switch
+    enabled: true
+  mode: single

@@ -1,0 +1,20 @@
+# Archivos de sistema gigantes
+config/core
+core/
+*.db
+*.db-shm
+*.db-wal
+*.log
+.storage/
+
+# Carpetas de entorno de Big Bear
+bin/
+include/
+lib/
+share/
+pyenv/
+
+# Secretos y backups
+secrets.yaml
+.env
+backups/
