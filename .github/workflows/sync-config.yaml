@@ -46,43 +46,63 @@ jobs:
 
       - name: Reload Automations
         run: |
-          curl -s -f -X POST \
+          HTTP_CODE=$(curl -s -w "\n%{http_code}" -X POST \
             "http://localhost:8123/api/services/homeassistant/reload_automations" \
             -H "Authorization: Bearer ${{ secrets.HOMEASSISTANT_TOKEN }}" \
             -H "Content-Type: application/json" \
-            -d '{}'
+            -d '{}' | tail -1)
           
-          echo "✓ Automations recargadas exitosamente"
+          if [[ "$HTTP_CODE" =~ ^2[0-9]{2}$ ]]; then
+            echo "✓ Automations recargadas exitosamente (HTTP $HTTP_CODE)"
+          else
+            echo "✗ Error al recargar automations (HTTP $HTTP_CODE)"
+            exit 1
+          fi
 
       - name: Reload Scripts
         run: |
-          curl -s -f -X POST \
+          HTTP_CODE=$(curl -s -w "\n%{http_code}" -X POST \
             "http://localhost:8123/api/services/homeassistant/reload_scripts" \
             -H "Authorization: Bearer ${{ secrets.HOMEASSISTANT_TOKEN }}" \
             -H "Content-Type: application/json" \
-            -d '{}'
+            -d '{}' | tail -1)
           
-          echo "✓ Scripts recargados exitosamente"
+          if [[ "$HTTP_CODE" =~ ^2[0-9]{2}$ ]]; then
+            echo "✓ Scripts recargados exitosamente (HTTP $HTTP_CODE)"
+          else
+            echo "✗ Error al recargar scripts (HTTP $HTTP_CODE)"
+            exit 1
+          fi
 
       - name: Reload Scenes
         run: |
-          curl -s -f -X POST \
+          HTTP_CODE=$(curl -s -w "\n%{http_code}" -X POST \
             "http://localhost:8123/api/services/homeassistant/reload_scenes" \
             -H "Authorization: Bearer ${{ secrets.HOMEASSISTANT_TOKEN }}" \
             -H "Content-Type: application/json" \
-            -d '{}'
+            -d '{}' | tail -1)
           
-          echo "✓ Scenes recargados exitosamente"
+          if [[ "$HTTP_CODE" =~ ^2[0-9]{2}$ ]]; then
+            echo "✓ Scenes recargados exitosamente (HTTP $HTTP_CODE)"
+          else
+            echo "✗ Error al recargar scenes (HTTP $HTTP_CODE)"
+            exit 1
+          fi
 
       - name: Reload Blueprints
         run: |
-          curl -s -f -X POST \
+          HTTP_CODE=$(curl -s -w "\n%{http_code}" -X POST \
             "http://localhost:8123/api/services/blueprint/reload_blueprints" \
             -H "Authorization: Bearer ${{ secrets.HOMEASSISTANT_TOKEN }}" \
             -H "Content-Type: application/json" \
-            -d '{}'
+            -d '{}' | tail -1)
           
-          echo "✓ Blueprints recargados exitosamente"
+          if [[ "$HTTP_CODE" =~ ^2[0-9]{2}$ ]]; then
+            echo "✓ Blueprints recargados exitosamente (HTTP $HTTP_CODE)"
+          else
+            echo "✗ Error al recargar blueprints (HTTP $HTTP_CODE)"
+            exit 1
+          fi
 
       - name: Verify reload completion
         run: |
