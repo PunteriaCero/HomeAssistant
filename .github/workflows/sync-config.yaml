@@ -49,37 +49,41 @@ jobs:
 
       - name: Reload Automations
         run: |
-          curl -s -X POST \
+          curl -s -f -X POST \
             "http://localhost:8123/api/services/homeassistant/reload_automations" \
             -H "Authorization: Bearer ${{ secrets.HOMEASSISTANT_TOKEN }}" \
-            -H "Content-Type: application/json"
+            -H "Content-Type: application/json" \
+            -d '{}'
           
           echo "✓ Automations recargadas exitosamente"
 
       - name: Reload Scripts
         run: |
-          curl -s -X POST \
+          curl -s -f -X POST \
             "http://localhost:8123/api/services/homeassistant/reload_scripts" \
             -H "Authorization: Bearer ${{ secrets.HOMEASSISTANT_TOKEN }}" \
-            -H "Content-Type: application/json"
+            -H "Content-Type: application/json" \
+            -d '{}'
           
           echo "✓ Scripts recargados exitosamente"
 
       - name: Reload Scenes
         run: |
-          curl -s -X POST \
+          curl -s -f -X POST \
             "http://localhost:8123/api/services/homeassistant/reload_scenes" \
             -H "Authorization: Bearer ${{ secrets.HOMEASSISTANT_TOKEN }}" \
-            -H "Content-Type: application/json"
+            -H "Content-Type: application/json" \
+            -d '{}'
           
           echo "✓ Scenes recargados exitosamente"
 
       - name: Reload Blueprints
         run: |
-          curl -s -X POST \
+          curl -s -f -X POST \
             "http://localhost:8123/api/services/blueprint/reload_blueprints" \
             -H "Authorization: Bearer ${{ secrets.HOMEASSISTANT_TOKEN }}" \
-            -H "Content-Type: application/json"
+            -H "Content-Type: application/json" \
+            -d '{}'
           
           echo "✓ Blueprints recargados exitosamente"
 
