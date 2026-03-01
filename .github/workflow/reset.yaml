@@ -1,0 +1,67 @@
+name: Validate and Restart Home Assistant
+
+on:
+  
+  # Se ejecuta manualmente.
+  workflow_dispatch:
+
+  push:
+    paths:
+      - 'config/**'
+      - '.github/workflows/validate-and-restart-homeassistant.yml'
+    branches:
+      - main  # Cambia esto a tu rama principal si es diferente
+
+jobs:
+  validate-and-restart:
+    runs-on: self-hosted
+    
+    steps:
+      - name: Pull latest changes from Home Assistant repo
+        run: |
+          cd /DATA/AppData/big-bear-home-assistant
+          GIT_SSH_COMMAND="ssh -i /root/.ssh/id_ed25519_github" git pull origin main
+          echo "✓ Cambios descargados correctamente"
+
+      - name: Validate Home Assistant configuration
+        id: validate
+        run: |
+          RESPONSE=$(curl -s -X POST \
+            "http://localhost:8123/api/config/core/check_config" \
+            -H "Authorization: Bearer ${{ secrets.HOMEASSISTANT_TOKEN }}" \
+            -H "Content-Type: application/json")
+          
+          echo "response=$RESPONSE" >> $GITHUB_OUTPUT
+          
+          # Parsear JSON sin dependencias externas
+          RESULT=$(echo "$RESPONSE" | sed -n 's/.*"result"\s*:\s*"\([^"]*\)".*/\1/p')
+          ERRORS=$(echo "$RESPONSE" | sed -n 's/.*"errors"\s*:\s*\([^,}]*\).*/\1/p')
+          WARNINGS=$(echo "$RESPONSE" | sed -n 's/.*"warnings"\s*:\s*\([^,}]*\).*/\1/p')
+          
+          if [ "$RESULT" = "valid" ]; then
+            echo "✓ Configuración válida"
+            echo "valid=true" >> $GITHUB_OUTPUT
+            exit 0
+          else
+            echo "✗ Configuración inválida"
+            echo "valid=false" >> $GITHUB_OUTPUT
+            echo "Errores: $ERRORS"
+            echo "Advertencias: $WARNINGS"
+            exit 1
+          fi
+
+      - name: Restart Home Assistant
+        if: steps.validate.outputs.valid == 'true'
+        run: |
+          curl -s -X POST \
+            "http://localhost:8123/api/services/homeassistant/restart" \
+            -H "Authorization: Bearer ${{ secrets.HOMEASSISTANT_TOKEN }}" \
+            -H "Content-Type: application/json"
+          
+          echo "✓ Home Assistant reiniciado exitosamente"
+
+      - name: Configuration validation failed
+        if: failure() && steps.validate.outputs.valid == 'false'
+        run: |
+          echo "❌ La validación de configuración falló. Revisa los cambios en config/"
+          exit 1
