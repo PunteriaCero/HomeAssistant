@@ -23,9 +23,6 @@ jobs:
     runs-on: self-hosted
     
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@v3
-
       - name: Pull latest changes from repository
         run: |
           cd /DATA/AppData/big-bear-home-assistant
