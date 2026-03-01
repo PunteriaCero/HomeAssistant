@@ -13,8 +13,18 @@ include/
 lib/
 share/
 pyenv/
+www/
 
 # Secretos y backups
 secrets.yaml
 .env
 backups/
+
+# Logs
+*.log
+*.log.*
+
+# No necesarios
+.cache/
+*.lock
+.HA_VERSION
