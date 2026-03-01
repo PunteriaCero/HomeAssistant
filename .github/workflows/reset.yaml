@@ -7,8 +7,7 @@ on:
 
   push:
     paths:
-      - 'config/**'
-      - '.github/workflows/validate-and-restart-homeassistant.yml'
+      - 'config/configuration.yaml'
     branches:
       - main  # Cambia esto a tu rama principal si es diferente
 

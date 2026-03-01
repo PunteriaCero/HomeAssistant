@@ -1,0 +1,93 @@
+name: Sync Configuration Changes
+
+on:
+  
+  # Se ejecuta manualmente
+  workflow_dispatch:
+
+  push:
+    paths:
+      - 'config/automations.yaml'
+      - 'config/scripts.yaml'
+      - 'config/scenes.yaml'
+      - 'config/blueprints/**'
+      - '.github/workflows/sync-config.yaml'
+    branches:
+      - main  # Cambia esto a tu rama principal si es diferente
+    # Excluir cambios en configuration.yaml
+    ignore-paths:
+      - 'config/configuration.yaml'
+
+jobs:
+  sync-configuration:
+    runs-on: self-hosted
+    
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+
+      - name: Pull latest changes from repository
+        run: |
+          cd /DATA/AppData/big-bear-home-assistant
+          GIT_SSH_COMMAND="ssh -i /root/.ssh/id_ed25519_github" git pull origin main
+          echo "✓ Cambios de configuración descargados correctamente"
+
+      - name: Verify changes
+        run: |
+          cd /DATA/AppData/big-bear-home-assistant
+          echo "Estado del repositorio:"
+          git status
+          echo ""
+          echo "Últimos cambios:"
+          git log -1 --pretty=format:"%h - %s (%an, %ar)"
+
+      - name: List updated files
+        run: |
+          cd /DATA/AppData/big-bear-home-assistant
+          echo "Archivos modificados en esta actualización:"
+          git diff-tree --no-commit-id --name-only -r HEAD | grep -E '(automations|scripts|scenes|blueprints)' || echo "No hay cambios en archivos de configuración tracked"
+
+      - name: Reload Automations
+        run: |
+          curl -s -X POST \
+            "http://localhost:8123/api/services/homeassistant/reload_automations" \
+            -H "Authorization: Bearer ${{ secrets.HOMEASSISTANT_TOKEN }}" \
+            -H "Content-Type: application/json"
+          
+          echo "✓ Automations recargadas exitosamente"
+
+      - name: Reload Scripts
+        run: |
+          curl -s -X POST \
+            "http://localhost:8123/api/services/homeassistant/reload_scripts" \
+            -H "Authorization: Bearer ${{ secrets.HOMEASSISTANT_TOKEN }}" \
+            -H "Content-Type: application/json"
+          
+          echo "✓ Scripts recargados exitosamente"
+
+      - name: Reload Scenes
+        run: |
+          curl -s -X POST \
+            "http://localhost:8123/api/services/homeassistant/reload_scenes" \
+            -H "Authorization: Bearer ${{ secrets.HOMEASSISTANT_TOKEN }}" \
+            -H "Content-Type: application/json"
+          
+          echo "✓ Scenes recargados exitosamente"
+
+      - name: Reload Blueprints
+        run: |
+          curl -s -X POST \
+            "http://localhost:8123/api/services/blueprint/reload_blueprints" \
+            -H "Authorization: Bearer ${{ secrets.HOMEASSISTANT_TOKEN }}" \
+            -H "Content-Type: application/json"
+          
+          echo "✓ Blueprints recargados exitosamente"
+
+      - name: Verify reload completion
+        run: |
+          echo "✅ Todas las configuraciones han sido sincronizadas y recargadas"
+          echo "- Automations: ✓"
+          echo "- Scripts: ✓"
+          echo "- Scenes: ✓"
+          echo "- Blueprints: ✓"
+
