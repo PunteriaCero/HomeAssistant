@@ -546,3 +546,216 @@ adb_connect:
       required: true
   alias: adb_connect
   description: ''
+# ============================================================================
+# TEST SCRIPT - Probar todos los endpoints de ADB Control API
+# ============================================================================
+# Este script prueba todos los endpoints de la API ADB Control
+# Se puede invocar desde Developer Tools > Services > script.test_adb_endpoints
+# O desde automations/scripts pasando device_ip como parámetro
+
+test_adb_endpoints:
+  alias: "ADB API - Test All Endpoints"
+  description: "Prueba todos los endpoints de la API ADB Control"
+  fields:
+    device_ip:
+      selector:
+        text:
+      default: "192.168.0.163"
+      required: true
+      description: "IP del dispositivo a probar (ej: 192.168.0.163)"
+  sequence:
+    # ========== HEALTH CHECK ==========
+    - action: rest_command.adb_health
+      response_variable: api_health
+    
+    - action: notify.notify
+      data:
+        message: |
+          🔍 INICIANDO TEST DE ENDPOINTS
+          ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+          📍 Device: {{ device_ip }}
+          🔧 API Health: {{ api_health.content }}
+
+    # ========== DEVICE MANAGEMENT ==========
+    - action: rest_command.adb_list_devices
+      response_variable: list_devices
+
+    - action: rest_command.adb_connect_device
+      data:
+        device_ip: "{{ device_ip }}"
+      response_variable: connect_response
+
+    - action: notify.notify
+      data:
+        message: |
+          ✅ TEST 1: DEVICE MANAGEMENT
+          Connect Response: {{ connect_response.content }}
+          Devices: {{ list_devices.content }}
+
+    - delay:
+        seconds: 2
+
+    # ========== STATUS ==========
+    - action: rest_command.adb_check_status
+      data:
+        device_ip: "{{ device_ip }}"
+      response_variable: device_status
+
+    - action: notify.notify
+      data:
+        message: |
+          ✅ TEST 2: DEVICE STATUS
+          Status: {{ device_status.content }}
+
+    - delay:
+        seconds: 2
+
+    # ========== DEVICE INFO ==========
+    - action: rest_command.adb_device_info
+      data:
+        device_ip: "{{ device_ip }}"
+      response_variable: device_info
+
+    - action: notify.notify
+      data:
+        message: |
+          ✅ TEST 3: DEVICE INFORMATION
+          Info: {{ device_info.content }}
+
+    - delay:
+        seconds: 2
+
+    # ========== CURRENT APP ==========
+    - action: rest_command.adb_current_app
+      data:
+        device_ip: "{{ device_ip }}"
+      response_variable: current_app
+
+    - action: notify.notify
+      data:
+        message: |
+          ✅ TEST 4: CURRENT APPLICATION
+          App: {{ current_app.content }}
+
+    - delay:
+        seconds: 2
+
+    # ========== INSTALLED APPS ==========
+    - action: rest_command.adb_installed_apps
+      data:
+        device_ip: "{{ device_ip }}"
+      response_variable: installed_apps
+
+    - action: notify.notify
+      data:
+        message: |
+          ✅ TEST 5: INSTALLED APPLICATIONS
+          Apps: {{ installed_apps.content | truncate(300) }}
+
+    - delay:
+        seconds: 2
+
+    # ========== VOLUME TESTS ==========
+    - action: rest_command.adb_volume_current
+      data:
+        device_ip: "{{ device_ip }}"
+      response_variable: volume_current
+
+    - action: notify.notify
+      data:
+        message: |
+          ✅ TEST 6: VOLUME OPERATIONS
+          Current Volume: {{ volume_current.content }}
+
+    - delay:
+        seconds: 1
+
+    - action: rest_command.adb_volume_up
+      data:
+        device_ip: "{{ device_ip }}"
+        steps: 1
+      response_variable: volume_up_response
+
+    - action: notify.notify
+      data:
+        message: "   🔊 Volume Up: {{ volume_up_response.content }}"
+
+    - delay:
+        seconds: 1
+
+    - action: rest_command.adb_volume_down
+      data:
+        device_ip: "{{ device_ip }}"
+        steps: 1
+      response_variable: volume_down_response
+
+    - action: notify.notify
+      data:
+        message: "   🔇 Volume Down: {{ volume_down_response.content }}"
+
+    - delay:
+        seconds: 1
+
+    - action: rest_command.adb_volume_mute
+      data:
+        device_ip: "{{ device_ip }}"
+      response_variable: volume_mute_response
+
+    - action: notify.notify
+      data:
+        message: "   🔕 Mute: {{ volume_mute_response.content }}"
+
+    - delay:
+        seconds: 2
+
+    # ========== PLAYBACK CONTROL ==========
+    - action: rest_command.adb_pause_video
+      data:
+        device_ip: "{{ device_ip }}"
+      response_variable: pause_response
+
+    - action: notify.notify
+      data:
+        message: |
+          ✅ TEST 7: PLAYBACK CONTROL
+          Pause: {{ pause_response.content }}
+
+    - delay:
+        seconds: 1
+
+    - action: rest_command.adb_exit_app
+      data:
+        device_ip: "{{ device_ip }}"
+      response_variable: exit_response
+
+    - action: notify.notify
+      data:
+        message: "   ❌ Exit App: {{ exit_response.content }}"
+
+    - delay:
+        seconds: 2
+
+    # ========== DISCONNECT ==========
+    - action: rest_command.adb_disconnect_device
+      data:
+        device_ip: "{{ device_ip }}"
+      response_variable: disconnect_response
+
+    - action: notify.notify
+      data:
+        message: |
+          ✅ TEST 8: DISCONNECT
+          Disconnect: {{ disconnect_response.content }}
+
+    - delay:
+        seconds: 1
+
+    # ========== FINAL SUMMARY ==========
+    - action: notify.notify
+      data:
+        message: |
+          ✅ ✅ ✅ TEST COMPLETADO ✅ ✅ ✅
+          ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+          📊 Todos los endpoints fueron testeados
+          🎯 IP del dispositivo: {{ device_ip }}
+          ⏱️  Timestamp: {{ now() }}
