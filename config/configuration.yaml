@@ -36,7 +36,7 @@ rest:
   # ========== DISPOSITIVO 1: SALA ==========
 
   # Sensor para dispositivo 1 - Aplicación actual
-  - resource: http://192.168.0.251:9123/device/current-app?device_ip=192.168.0.161
+  - resource: http://192.168.0.251:9123/device/current-app?device_ip=192.168.0.163
     scan_interval: 300
     sensor:
       - name: "ADB Current App - Sala"
