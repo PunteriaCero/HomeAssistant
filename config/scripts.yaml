@@ -759,3 +759,86 @@ test_adb_endpoints:
           📊 Todos los endpoints fueron testeados
           🎯 IP del dispositivo: {{ device_ip }}
           ⏱️  Timestamp: {{ now() }}
+
+# ============================================================================
+# FIRE STICK (192.168.0.163) - Reproducción de Videos
+# ============================================================================
+
+firestick_play_video:
+  alias: "Fire Stick - Reproducir video"
+  description: "Reproduce un video en el Fire Stick desde una URL"
+  fields:
+    video_url:
+      selector:
+        text:
+      default: "https://www.youtube.com/watch?v=dQw4w9WgXcQ"
+      required: true
+      description: "URL del video (YouTube, etc)"
+  sequence:
+    # Conectar dispositivo
+    - action: rest_command.adb_connect_device
+      data:
+        device_ip: "192.168.0.163"
+
+    - delay:
+        seconds: 2
+
+    # Reproducir video
+    - action: rest_command.adb_play_video
+      data:
+        device_ip: "192.168.0.163"
+        video_url: "{{ video_url }}"
+      response_variable: play_response
+
+    - delay:
+        seconds: 1
+
+    # Notificación
+    - action: notify.notify
+      data:
+        title: "🎬 Fire Stick - Video en reproducción"
+        message: |
+          ✅ Video iniciado correctamente
+          📍 IP: 192.168.0.163
+          🎥 URL: {{ video_url | truncate(50) }}
+          ⏰ Hora: {{ now().strftime('%H:%M:%S') }}
+
+firestick_morning_video:
+  alias: "Fire Stick - Video matutino"
+  description: "Reproduce el video matutino en el Fire Stick"
+  sequence:
+    # Conectar dispositivo
+    - action: rest_command.adb_connect_device
+      data:
+        device_ip: "192.168.0.163"
+
+    - delay:
+        seconds: 2
+
+    # Reproducir video matutino predefinido
+    - action: rest_command.adb_play_video
+      data:
+        device_ip: "192.168.0.163"
+        video_url: "https://www.youtube.com/watch?v=dQw4w9WgXcQ"
+
+    - delay:
+        seconds: 1
+
+    # Aumentar volumen
+    - action: rest_command.adb_volume_up
+      data:
+        device_ip: "192.168.0.163"
+        steps: 3
+
+    - delay:
+        seconds: 1
+
+    # Notificación
+    - action: notify.notify
+      data:
+        title: "☀️ Buenos días - Fire Stick activado"
+        message: |
+          🎬 Reproduciendo video matutino
+          📍 Fire Stick: 192.168.0.163
+          🔊 Volumen: Aumentado
+          ⏰ Hora: {{ now().strftime('%H:%M:%S') }}

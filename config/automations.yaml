@@ -603,3 +603,30 @@
     domain: switch
     enabled: true
   mode: single
+# ============================================================================
+# FIRE STICK 192.168.0.163 - Reproducir video a las 6 AM
+# ============================================================================
+
+- id: 'firestick_daily_morning_video'
+  alias: "Fire Stick - Reproducir video a las 6 AM"
+  description: "Reproduce un video en el Fire Stick todos los días a las 6 de la mañana"
+  triggers:
+    - trigger: time
+      at: "06:00:00"
+  conditions: []
+  actions:
+    # Ejecutar el script matutino del Fire Stick
+    - action: script.firestick_morning_video
+      data: {}
+
+    - delay:
+        seconds: 5
+
+    # Log en el archivo de eventos
+    - action: system_log.write
+      data:
+        level: info
+        logger: firestick_automation
+        message: "✅ Automation completada: Fire Stick video matutino a las 06:00:00"
+
+  mode: single

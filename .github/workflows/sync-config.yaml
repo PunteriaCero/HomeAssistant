@@ -47,7 +47,7 @@ jobs:
       - name: Reload Automations
         run: |
           RESPONSE=$(curl -s -w "\n%{http_code}" -X POST \
-            "http://localhost:8123/api/services/homeassistant/reload_automations" \
+            "http://localhost:8123/api/services/blueprint/reload" \
             -H "Authorization: Bearer ${{ secrets.HOMEASSISTANT_TOKEN }}" \
             -H "Content-Type: application/json" \
             -d '{}')
