@@ -168,7 +168,7 @@ adb_device:
               response_variable: connect_result
             
             - variables:
-                device_result: "{{ device_result | combine({'status': 'completed', 'response': connect_result.json}, recursive=True) }}"
+                device_result: "{{ device_result | combine({'status': 'completed', 'response': connect_result}, recursive=True) }}"
             
             - action: notify.notify
               data:
@@ -193,7 +193,7 @@ adb_device:
               response_variable: disconnect_result
             
             - variables:
-                device_result: "{{ device_result | combine({'status': 'completed', 'response': disconnect_result.json}, recursive=True) }}"
+                device_result: "{{ device_result | combine({'status': 'completed', 'response': disconnect_result}, recursive=True) }}"
             
             - action: notify.notify
               data:
@@ -213,7 +213,7 @@ adb_device:
               response_variable: list_result
             
             - variables:
-                device_result: "{{ device_result | combine({'status': 'completed', 'response': list_result.json, 'count': list_result.json | length}, recursive=True) }}"
+                device_result: "{{ device_result | combine({'status': 'completed', 'response': list_result, 'count': list_result | length}, recursive=True) }}"
             
             - action: notify.notify
               data:
@@ -238,7 +238,7 @@ adb_device:
               response_variable: status_result
             
             - variables:
-                device_result: "{{ device_result | combine({'status': 'completed', 'response': status_result.json}, recursive=True) }}"
+                device_result: "{{ device_result | combine({'status': 'completed', 'response': status_result}, recursive=True) }}"
             
             - action: notify.notify
               data:
@@ -259,7 +259,7 @@ adb_device:
               response_variable: health_result
             
             - variables:
-                device_result: "{{ device_result | combine({'status': 'completed', 'response': health_result.json if health_result.json else health_result.content}, recursive=True) }}"
+                device_result: "{{ device_result | combine({'status': 'completed', 'response': health_result}, recursive=True) }}"
             
             - action: notify.notify
               data:
@@ -335,7 +335,7 @@ adb_info:
               response_variable: info_response
             
             - variables:
-                info_result: "{{ info_result | combine({'status': 'completed', 'response': info_response.json}, recursive=True) }}"
+                info_result: "{{ info_result | combine({'status': 'completed', 'response': info_response}, recursive=True) }}"
             
             - action: notify.notify
               data:
@@ -357,7 +357,7 @@ adb_info:
               response_variable: app_response
             
             - variables:
-                info_result: "{{ info_result | combine({'status': 'completed', 'response': app_response.json}, recursive=True) }}"
+                info_result: "{{ info_result | combine({'status': 'completed', 'response': app_response}, recursive=True) }}"
             
             - action: notify.notify
               data:
@@ -380,7 +380,7 @@ adb_info:
               response_variable: apps_response
             
             - variables:
-                info_result: "{{ info_result | combine({'status': 'completed', 'response': apps_response.json, 'count': apps_response.json | length}, recursive=True) }}"
+                info_result: "{{ info_result | combine({'status': 'completed', 'response': apps_response, 'count': apps_response | length}, recursive=True) }}"
             
             - action: notify.notify
               data:
@@ -407,7 +407,7 @@ adb_info:
               response_variable: log_response
             
             - variables:
-                info_result: "{{ info_result | combine({'status': 'completed', 'lines': lines | default(50), 'response': log_response.json, 'count': log_response.json | length}, recursive=True) }}"
+                info_result: "{{ info_result | combine({'status': 'completed', 'lines': lines | default(50), 'response': log_response, 'count': log_response | length}, recursive=True) }}"
             
             - action: notify.notify
               data:
@@ -485,7 +485,7 @@ adb_volume:
               response_variable: get_result
             
             - variables:
-                volume_result: "{{ volume_result | combine({'status': 'completed', 'response': get_result.json}, recursive=True) }}"
+                volume_result: "{{ volume_result | combine({'status': 'completed', 'response': get_result}, recursive=True) }}"
             
             - action: notify.notify
               data:
@@ -508,7 +508,7 @@ adb_volume:
               response_variable: up_result
             
             - variables:
-                volume_result: "{{ volume_result | combine({'status': 'completed', 'steps': steps | default(1), 'response': up_result.json}, recursive=True) }}"
+                volume_result: "{{ volume_result | combine({'status': 'completed', 'steps': steps | default(1), 'response': up_result}, recursive=True) }}"
             
             - action: notify.notify
               data:
@@ -532,7 +532,7 @@ adb_volume:
               response_variable: down_result
             
             - variables:
-                volume_result: "{{ volume_result | combine({'status': 'completed', 'steps': steps | default(1), 'response': down_result.json}, recursive=True) }}"
+                volume_result: "{{ volume_result | combine({'status': 'completed', 'steps': steps | default(1), 'response': down_result}, recursive=True) }}"
             
             - action: notify.notify
               data:
@@ -559,7 +559,7 @@ adb_volume:
               response_variable: set_result
             
             - variables:
-                volume_result: "{{ volume_result | combine({'status': 'completed', 'level': steps, 'response': set_result.json}, recursive=True) }}"
+                volume_result: "{{ volume_result | combine({'status': 'completed', 'level': steps, 'response': set_result}, recursive=True) }}"
             
             - action: notify.notify
               data:
@@ -581,7 +581,7 @@ adb_volume:
               response_variable: mute_result
             
             - variables:
-                volume_result: "{{ volume_result | combine({'status': 'completed', 'response': mute_result.json}, recursive=True) }}"
+                volume_result: "{{ volume_result | combine({'status': 'completed', 'response': mute_result}, recursive=True) }}"
             
             - action: notify.notify
               data:
@@ -658,7 +658,7 @@ adb_media:
               response_variable: play_result
             
             - variables:
-                media_result: "{{ media_result | combine({'status': 'completed', 'action': 'play', 'video_url': video_url, 'response': play_result.json}, recursive=True) }}"
+                media_result: "{{ media_result | combine({'status': 'completed', 'action': 'play', 'video_url': video_url, 'response': play_result}, recursive=True) }}"
             
             - delay:
                 seconds: 2
@@ -684,7 +684,7 @@ adb_media:
               response_variable: pause_result
             
             - variables:
-                media_result: "{{ media_result | combine({'status': 'completed', 'action': 'pause', 'response': pause_result.json}, recursive=True) }}"
+                media_result: "{{ media_result | combine({'status': 'completed', 'action': 'pause', 'response': pause_result}, recursive=True) }}"
             
             - action: notify.notify
               data:
@@ -706,7 +706,7 @@ adb_media:
               response_variable: exit_result
             
             - variables:
-                media_result: "{{ media_result | combine({'status': 'completed', 'action': 'exit', 'response': exit_result.json}, recursive=True) }}"
+                media_result: "{{ media_result | combine({'status': 'completed', 'action': 'exit', 'response': exit_result}, recursive=True) }}"
             
             - action: notify.notify
               data:
@@ -778,7 +778,7 @@ adb_system:
               response_variable: screenshot_result
             
             - variables:
-                system_result: "{{ system_result | combine({'status': 'completed', 'response': screenshot_result.json if screenshot_result.json else screenshot_result.content}, recursive=True) }}"
+                system_result: "{{ system_result | combine({'status': 'completed', 'response': screenshot_result}, recursive=True) }}"
             
             - action: notify.notify
               data:
@@ -804,7 +804,7 @@ adb_system:
               response_variable: command_result
             
             - variables:
-                system_result: "{{ system_result | combine({'status': 'completed', 'command': command, 'response': command_result.json}, recursive=True) }}"
+                system_result: "{{ system_result | combine({'status': 'completed', 'command': command, 'response': command_result}, recursive=True) }}"
             
             - action: notify.notify
               data:
@@ -933,14 +933,14 @@ test_adb_endpoints:
       response_variable: connect_response
 
     - variables:
-        test_results: "{{ test_results | combine({'tests': test_results.tests + [{'name': 'Connect Device', 'endpoint': 'POST /devices/connect', 'status': 'passed', 'device_ip': device_ip, 'response': connect_response.json}]}, recursive=True) }}"
+        test_results: "{{ test_results | combine({'tests': test_results.tests + [{'name': 'Connect Device', 'endpoint': 'POST /devices/connect', 'status': 'passed', 'device_ip': device_ip, 'response': connect_response}]}, recursive=True) }}"
 
     - action: notify.notify
       data:
         message: |
           ✅ TEST 1: DEVICE MANAGEMENT
           📋 Devices: {{ list_devices.json | to_json }}
-          🔌 Connect: {{ connect_response.json | to_json }}
+          🔌 Connect: {{ connect_response | to_json }}
 
     - delay:
         seconds: 2
@@ -1026,13 +1026,13 @@ test_adb_endpoints:
       response_variable: logcat_response
 
     - variables:
-        test_results: "{{ test_results | combine({'tests': test_results.tests + [{'name': 'Logcat', 'endpoint': 'GET /device/logcat', 'status': 'passed', 'response': logcat_response.json}]}, recursive=True) }}"
+        test_results: "{{ test_results | combine({'tests': test_results.tests + [{'name': 'Logcat', 'endpoint': 'GET /device/logcat', 'status': 'passed', 'response': logcat_response}]}, recursive=True) }}"
 
     - action: notify.notify
       data:
         message: |
           ✅ TEST 6B: SYSTEM LOGS (LOGCAT)
-          Logs: {{ logcat_response.json | to_json | truncate(300) }}
+          Logs: {{ logcat_response | to_json | truncate(300) }}
 
     - delay:
         seconds: 2
@@ -1062,11 +1062,11 @@ test_adb_endpoints:
       response_variable: volume_up_response
 
     - variables:
-        test_results: "{{ test_results | combine({'tests': test_results.tests + [{'name': 'Volume Up', 'endpoint': 'POST /device/volume/increase', 'status': 'passed', 'response': volume_up_response.json}]}, recursive=True) }}"
+        test_results: "{{ test_results | combine({'tests': test_results.tests + [{'name': 'Volume Up', 'endpoint': 'POST /device/volume/increase', 'status': 'passed', 'response': volume_up_response}]}, recursive=True) }}"
 
     - action: notify.notify
       data:
-        message: "   🔊 Volume Up: {{ volume_up_response.json | to_json }}"
+        message: "   🔊 Volume Up: {{ volume_up_response | to_json }}"
 
     - delay:
         seconds: 1
@@ -1078,11 +1078,11 @@ test_adb_endpoints:
       response_variable: volume_down_response
 
     - variables:
-        test_results: "{{ test_results | combine({'tests': test_results.tests + [{'name': 'Volume Down', 'endpoint': 'POST /device/volume/decrease', 'status': 'passed', 'response': volume_down_response.json}]}, recursive=True) }}"
+        test_results: "{{ test_results | combine({'tests': test_results.tests + [{'name': 'Volume Down', 'endpoint': 'POST /device/volume/decrease', 'status': 'passed', 'response': volume_down_response}]}, recursive=True) }}"
 
     - action: notify.notify
       data:
-        message: "   🔇 Volume Down: {{ volume_down_response.json | to_json }}"
+        message: "   🔇 Volume Down: {{ volume_down_response | to_json }}"
 
     - delay:
         seconds: 1
@@ -1093,11 +1093,11 @@ test_adb_endpoints:
       response_variable: volume_mute_response
 
     - variables:
-        test_results: "{{ test_results | combine({'tests': test_results.tests + [{'name': 'Volume Mute', 'endpoint': 'POST /device/volume/mute', 'status': 'passed', 'response': volume_mute_response.json}]}, recursive=True) }}"
+        test_results: "{{ test_results | combine({'tests': test_results.tests + [{'name': 'Volume Mute', 'endpoint': 'POST /device/volume/mute', 'status': 'passed', 'response': volume_mute_response}]}, recursive=True) }}"
 
     - action: notify.notify
       data:
-        message: "   🔕 Mute: {{ volume_mute_response.json | to_json }}"
+        message: "   🔕 Mute: {{ volume_mute_response | to_json }}"
 
     - delay:
         seconds: 2
@@ -1110,13 +1110,13 @@ test_adb_endpoints:
       response_variable: play_response
 
     - variables:
-        test_results: "{{ test_results | combine({'tests': test_results.tests + [{'name': 'Play Video', 'endpoint': 'POST /play', 'status': 'passed', 'response': play_response.json}]}, recursive=True) }}"
+        test_results: "{{ test_results | combine({'tests': test_results.tests + [{'name': 'Play Video', 'endpoint': 'POST /play', 'status': 'passed', 'response': play_response}]}, recursive=True) }}"
 
     - action: notify.notify
       data:
         message: |
           ✅ TEST 7: PLAYBACK CONTROL
-          Play Video: {{ play_response.json | to_json }}
+          Play Video: {{ play_response | to_json }}
 
     - delay:
         seconds: 2
@@ -1127,11 +1127,11 @@ test_adb_endpoints:
       response_variable: pause_response
 
     - variables:
-        test_results: "{{ test_results | combine({'tests': test_results.tests + [{'name': 'Pause Video', 'endpoint': 'POST /stop', 'status': 'passed', 'response': pause_response.json}]}, recursive=True) }}"
+        test_results: "{{ test_results | combine({'tests': test_results.tests + [{'name': 'Pause Video', 'endpoint': 'POST /stop', 'status': 'passed', 'response': pause_response}]}, recursive=True) }}"
 
     - action: notify.notify
       data:
-        message: "   ⏸️ Pause: {{ pause_response.json | to_json }}"
+        message: "   ⏸️ Pause: {{ pause_response | to_json }}"
 
     - delay:
         seconds: 1
@@ -1142,11 +1142,11 @@ test_adb_endpoints:
       response_variable: exit_response
 
     - variables:
-        test_results: "{{ test_results | combine({'tests': test_results.tests + [{'name': 'Exit App', 'endpoint': 'POST /exit', 'status': 'passed', 'response': exit_response.json}]}, recursive=True) }}"
+        test_results: "{{ test_results | combine({'tests': test_results.tests + [{'name': 'Exit App', 'endpoint': 'POST /exit', 'status': 'passed', 'response': exit_response}]}, recursive=True) }}"
 
     - action: notify.notify
       data:
-        message: "   ❌ Exit App: {{ exit_response.json | to_json }}"
+        message: "   ❌ Exit App: {{ exit_response | to_json }}"
 
     - delay:
         seconds: 2
@@ -1159,13 +1159,13 @@ test_adb_endpoints:
       response_variable: volume_set_response
 
     - variables:
-        test_results: "{{ test_results | combine({'tests': test_results.tests + [{'name': 'Volume Set', 'endpoint': 'POST /device/volume/set', 'status': 'passed', 'level': 8, 'response': volume_set_response.json}]}, recursive=True) }}"
+        test_results: "{{ test_results | combine({'tests': test_results.tests + [{'name': 'Volume Set', 'endpoint': 'POST /device/volume/set', 'status': 'passed', 'level': 8, 'response': volume_set_response}]}, recursive=True) }}"
 
     - action: notify.notify
       data:
         message: |
           ✅ TEST 8: VOLUME SET
-          Set to Level 8: {{ volume_set_response.json | to_json }}
+          Set to Level 8: {{ volume_set_response | to_json }}
 
     - delay:
         seconds: 1
@@ -1177,7 +1177,7 @@ test_adb_endpoints:
       response_variable: screenshot_response
 
     - variables:
-        test_results: "{{ test_results | combine({'tests': test_results.tests + [{'name': 'Screenshot', 'endpoint': 'GET /screenshot', 'status': 'passed', 'response': screenshot_response.json if screenshot_response.json else screenshot_response.content}]}, recursive=True) }}"
+        test_results: "{{ test_results | combine({'tests': test_results.tests + [{'name': 'Screenshot', 'endpoint': 'GET /screenshot', 'status': 'passed', 'response': screenshot_response}]}, recursive=True) }}"
 
     - action: notify.notify
       data:
@@ -1196,13 +1196,13 @@ test_adb_endpoints:
       response_variable: custom_cmd_response
 
     - variables:
-        test_results: "{{ test_results | combine({'tests': test_results.tests + [{'name': 'Custom Command', 'endpoint': 'POST /command', 'status': 'passed', 'command': 'pm list packages', 'response': custom_cmd_response.json}]}, recursive=True) }}"
+        test_results: "{{ test_results | combine({'tests': test_results.tests + [{'name': 'Custom Command', 'endpoint': 'POST /command', 'status': 'passed', 'command': 'pm list packages', 'response': custom_cmd_response}]}, recursive=True) }}"
 
     - action: notify.notify
       data:
         message: |
           ✅ TEST 10: CUSTOM COMMAND
-          pm list packages: {{ custom_cmd_response.json | to_json | truncate(150) }}
+          pm list packages: {{ custom_cmd_response | to_json | truncate(150) }}
 
     - delay:
         seconds: 1
@@ -1214,13 +1214,13 @@ test_adb_endpoints:
       response_variable: disconnect_response
 
     - variables:
-        test_results: "{{ test_results | combine({'tests': test_results.tests + [{'name': 'Disconnect', 'endpoint': 'POST /devices/disconnect', 'status': 'passed', 'response': disconnect_response.json}]}, recursive=True) }}"
+        test_results: "{{ test_results | combine({'tests': test_results.tests + [{'name': 'Disconnect', 'endpoint': 'POST /devices/disconnect', 'status': 'passed', 'response': disconnect_response}]}, recursive=True) }}"
 
     - action: notify.notify
       data:
         message: |
           ✅ TEST 11: DISCONNECT
-          Disconnect: {{ disconnect_response.json | to_json }}
+          Disconnect: {{ disconnect_response | to_json }}
 
     - delay:
         seconds: 1
