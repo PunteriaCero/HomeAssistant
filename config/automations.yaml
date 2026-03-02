@@ -615,13 +615,51 @@
       at: "06:00:00"
   conditions: []
   actions:
-    # Ejecutar el script matutino del Fire Stick
-    - action: script.firestick_morning_video
-      data: {}
-
+    # Conectar dispositivo
+    - action: script.adb_device
+      data:
+        action: "connect"
+        device_ip: "192.168.0.163"
+    
     - delay:
-        seconds: 5
-
+        seconds: 2
+    
+    # Reproducir video matutino
+    - action: script.adb_media
+      data:
+        action: "play"
+        device_ip: "192.168.0.163"
+        video_url: "https://www.youtube.com/watch?v=dQw4w9WgXcQ"
+      response_variable: morning_video
+    
+    - delay:
+        seconds: 1
+    
+    # Aumentar volumen
+    - action: script.adb_volume
+      data:
+        action: "up"
+        device_ip: "192.168.0.163"
+        steps: 3
+    
+    - delay:
+        seconds: 1
+    
+    # Notificación de confirmación
+    - action: notify.notify
+      data:
+        title: "☀️ Buenos días - Fire Stick"
+        message: |
+          🎬 Reproduciendo video matutino
+          📍 IP: 192.168.0.163
+          🎥 Video: YouTube
+          🔊 Volumen: Aumentado
+          ⏰ Hora: {{ now().strftime('%H:%M:%S') }}
+          📊 Estado: {{ morning_video.media_result.status }}
+    
+    - delay:
+        seconds: 2
+    
     # Log en el archivo de eventos
     - action: system_log.write
       data:
