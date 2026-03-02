@@ -135,6 +135,10 @@ rest_command:
   adb_custom_command:
     url: "http://192.168.0.251:9123/command?device_ip={{ device_ip }}&command={{ command }}"
     method: POST
+  
+  adb_screenshot:
+    url: "http://192.168.0.251:9123/screenshot?device_ip={{ device_ip }}"
+    method: GET
     
     
 proxmoxve:

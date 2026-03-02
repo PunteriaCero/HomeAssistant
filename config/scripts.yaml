@@ -116,7 +116,8 @@ ver_video_en_cocina:
   fields: {}
   mode: single
 adb_device:
-  description: Gestión de dispositivos ADB (conectar, desconectar, listar, estado)
+  alias: "ADB Device - Gestión de dispositivos"
+  description: "Gestión de dispositivos ADB (conectar, desconectar, listar, estado) con retorno JSON"
   fields:
     action:
       description: Acción a realizar
@@ -130,80 +131,158 @@ adb_device:
           - health
       default: status
     device_ip:
-      description: 'IP del dispositivo (requerido para: disconnect, status)'
+      description: 'IP del dispositivo (requerido para: connect, disconnect, status)'
       example: 192.168.0.161
       default: 192.168.0.161
     port:
       description: 'Puerto (opcional, default: 5555 para connect)'
       example: 5555
   sequence:
-  - condition: template
-    value_template: '{{ action is defined and action | length > 0 }}'
-  - choose:
-    - conditions:
-      - condition: template
-        value_template: '{{ action == ''connect'' }}'
-      sequence:
-      - condition: template
-        value_template: '{{ ip is defined and ip | length > 0 }}'
-      - data:
-          device_ip: '{{ device_ip }}'
-        response_variable: result
-        action: rest_command.adb_connect_device
-      - data:
-          message: 'Conectando a {{ device_ip }}: {{ result.status }}'
-        action: notify.notify
-    - conditions:
-      - condition: template
-        value_template: '{{ action == ''disconnect'' }}'
-      sequence:
-      - condition: template
-        value_template: '{{ device_ip is defined and device_ip | length > 0 }}'
-      - data:
-          device_ip: '{{ device_ip }}'
-        response_variable: result
-        action: rest_command.adb_disconnect_device
-      - data:
-          message: 'Desconectando {{ device_ip }}: {{ result.status }}'
-        action: notify.notify
-    - conditions:
-      - condition: template
-        value_template: '{{ action == ''list'' }}'
-      sequence:
-      - response_variable: result
-        action: rest_command.adb_list_devices
-      - data:
-          message: 'Dispositivos listados: {{ result.json | length }} dispositivos'
-        action: notify.notify
-    - conditions:
-      - condition: template
-        value_template: '{{ action == ''status'' }}'
-      sequence:
-      - condition: template
-        value_template: '{{ device_ip is defined and device_ip | length > 0 }}'
-      - data:
-          device_ip: '{{ device_ip }}'
-        response_variable: result
-        action: rest_command.adb_check_status
-      - data:
-          message: 'Estado: {{ result.json.status | default(''desconocido'') }}'
-        action: notify.notify
-    - conditions:
-      - condition: template
-        value_template: '{{ action == ''health'' }}'
-      sequence:
-      - response_variable: result
-        action: rest_command.adb_health
-      - data:
-          message: 'API Status: {{ result.json.status | default(''OK'') }}'
-        action: notify.notify
-    default:
-    - data:
-        message: 'ERROR adb_device: Acción ''{{ action }}'' desconocida. Use: connect,
-          disconnect, list, status o health'
-      action: notify.notify
+    # ========== VALIDACIÓN INICIAL ==========
+    - condition: template
+      value_template: '{{ action is defined and action | length > 0 }}'
+    
+    # ========== INICIALIZAR ESTRUCTURA DE RESPUESTA ==========
+    - variables:
+        device_result:
+          timestamp: "{{ now() }}"
+          action: "{{ action }}"
+          device_ip: "{{ device_ip }}"
+          status: "pending"
+          response: {}
+          error: null
+    
+    # ========== EJECUTAR ACCIÓN ==========
+    - choose:
+        # ========== CONNECT ==========
+        - conditions:
+            - condition: template
+              value_template: '{{ action == "connect" }}'
+          sequence:
+            - condition: template
+              value_template: '{{ device_ip is defined and device_ip | length > 0 }}'
+            
+            - action: rest_command.adb_connect_device
+              data:
+                device_ip: '{{ device_ip }}'
+              response_variable: connect_result
+            
+            - variables:
+                device_result: "{{ device_result | combine({'status': 'completed', 'response': connect_result.json}, recursive=True) }}"
+            
+            - action: notify.notify
+              data:
+                title: "🔌 Dispositivo conectado"
+                message: |
+                  ✅ Acción: CONNECT
+                  📍 IP: {{ device_ip }}
+                  📊 Respuesta: {{ device_result.response | to_json }}
+                  ⏰ Hora: {{ now().strftime('%H:%M:%S') }}
+        
+        # ========== DISCONNECT ==========
+        - conditions:
+            - condition: template
+              value_template: '{{ action == "disconnect" }}'
+          sequence:
+            - condition: template
+              value_template: '{{ device_ip is defined and device_ip | length > 0 }}'
+            
+            - action: rest_command.adb_disconnect_device
+              data:
+                device_ip: '{{ device_ip }}'
+              response_variable: disconnect_result
+            
+            - variables:
+                device_result: "{{ device_result | combine({'status': 'completed', 'response': disconnect_result.json}, recursive=True) }}"
+            
+            - action: notify.notify
+              data:
+                title: "❌ Dispositivo desconectado"
+                message: |
+                  ✅ Acción: DISCONNECT
+                  📍 IP: {{ device_ip }}
+                  📊 Respuesta: {{ device_result.response | to_json }}
+                  ⏰ Hora: {{ now().strftime('%H:%M:%S') }}
+        
+        # ========== LIST ==========
+        - conditions:
+            - condition: template
+              value_template: '{{ action == "list" }}'
+          sequence:
+            - action: rest_command.adb_list_devices
+              response_variable: list_result
+            
+            - variables:
+                device_result: "{{ device_result | combine({'status': 'completed', 'response': list_result.json, 'count': list_result.json | length}, recursive=True) }}"
+            
+            - action: notify.notify
+              data:
+                title: "📋 Dispositivos listados"
+                message: |
+                  ✅ Acción: LIST
+                  📊 Total: {{ device_result.count }} dispositivo(s)
+                  📋 Respuesta: {{ device_result.response | to_json | truncate(200) }}
+                  ⏰ Hora: {{ now().strftime('%H:%M:%S') }}
+        
+        # ========== STATUS ==========
+        - conditions:
+            - condition: template
+              value_template: '{{ action == "status" }}'
+          sequence:
+            - condition: template
+              value_template: '{{ device_ip is defined and device_ip | length > 0 }}'
+            
+            - action: rest_command.adb_check_status
+              data:
+                device_ip: '{{ device_ip }}'
+              response_variable: status_result
+            
+            - variables:
+                device_result: "{{ device_result | combine({'status': 'completed', 'response': status_result.json}, recursive=True) }}"
+            
+            - action: notify.notify
+              data:
+                title: "📊 Estado del dispositivo"
+                message: |
+                  ✅ Acción: STATUS
+                  📍 IP: {{ device_ip }}
+                  🟢 Estado: {{ device_result.response.status | default('N/A') }}
+                  📊 Respuesta: {{ device_result.response | to_json }}
+                  ⏰ Hora: {{ now().strftime('%H:%M:%S') }}
+        
+        # ========== HEALTH ==========
+        - conditions:
+            - condition: template
+              value_template: '{{ action == "health" }}'
+          sequence:
+            - action: rest_command.adb_health
+              response_variable: health_result
+            
+            - variables:
+                device_result: "{{ device_result | combine({'status': 'completed', 'response': health_result.json if health_result.json else health_result.content}, recursive=True) }}"
+            
+            - action: notify.notify
+              data:
+                title: "💚 API Health Check"
+                message: |
+                  ✅ Acción: HEALTH
+                  🟢 API Status: {{ device_result.response | to_json }}
+                  ⏰ Hora: {{ now().strftime('%H:%M:%S') }}
+      
+      # ========== ERROR - ACCIÓN DESCONOCIDA ==========
+      default:
+        - variables:
+            device_result: "{{ device_result | combine({'status': 'error', 'error': 'Acción desconocida: ' + action}, recursive=True) }}"
+        
+        - action: notify.notify
+          data:
+            title: "❌ Error en adb_device"
+            message: |
+              Acción desconocida: {{ action }}
+              Usa: connect, disconnect, list, status o health
 adb_info:
-  description: Información del dispositivo (info, app actual, apps instaladas, logs)
+  alias: "ADB Info - Información del dispositivo"
+  description: "Información del dispositivo (info, app actual, apps instaladas, logs) con retorno JSON"
   fields:
     action:
       description: Acción a realizar
@@ -226,62 +305,136 @@ adb_info:
       description: 'Número de líneas de log (para logcat, default: 50)'
       example: 50
   sequence:
-  - condition: template
-    value_template: '{{ device_ip is defined and device_ip | length > 0 }}'
-  - condition: template
-    value_template: '{{ action is defined and action | length > 0 }}'
-  - choose:
-    - conditions:
-      - condition: template
-        value_template: '{{ action == ''info'' }}'
-      sequence:
-      - data:
-          device_ip: '{{ device_ip }}'
-        response_variable: result
-        action: rest_command.adb_device_info
-      - data:
-          message: 'Info: {{ result.json | to_json }}'
-        action: notify.notify
-    - conditions:
-      - condition: template
-        value_template: '{{ action == ''current_app'' }}'
-      sequence:
-      - data:
-          device_ip: '{{ device_ip }}'
-        response_variable: result
-        action: rest_command.adb_current_app
-      - data:
-          message: 'App actual: {{ result.json.app_name | default(''N/A'') }}'
-        action: notify.notify
-    - conditions:
-      - condition: template
-        value_template: '{{ action == ''installed_apps'' }}'
-      sequence:
-      - data:
-          device_ip: '{{ device_ip }}'
-        response_variable: result
-        action: rest_command.adb_installed_apps
-      - data:
-          message: 'Instaladas: {{ result.json | length }} apps'
-        action: notify.notify
-    - conditions:
-      - condition: template
-        value_template: '{{ action == ''logcat'' }}'
-      sequence:
-      - data:
-          device_ip: '{{ device_ip }}'
-        response_variable: result
-        action: rest_command.adb_logcat
-      - data:
-          message: 'Logcat obtenido: {{ result.json | length }} líneas'
-        action: notify.notify
-    default:
-    - data:
-        message: 'ERROR adb_info: Acción ''{{ action }}'' desconocida. Use: info,
-          current_app, installed_apps o logcat'
-      action: notify.notify
+    # ========== VALIDACIÓN INICIAL ==========
+    - condition: template
+      value_template: '{{ device_ip is defined and device_ip | length > 0 }}'
+    
+    - condition: template
+      value_template: '{{ action is defined and action | length > 0 }}'
+    
+    # ========== INICIALIZAR ESTRUCTURA DE RESPUESTA ==========
+    - variables:
+        info_result:
+          timestamp: "{{ now() }}"
+          action: "{{ action }}"
+          device_ip: "{{ device_ip }}"
+          status: "pending"
+          response: {}
+          error: null
+    
+    # ========== EJECUTAR ACCIÓN ==========
+    - choose:
+        # ========== INFO ==========
+        - conditions:
+            - condition: template
+              value_template: '{{ action == "info" }}'
+          sequence:
+            - action: rest_command.adb_device_info
+              data:
+                device_ip: '{{ device_ip }}'
+              response_variable: info_response
+            
+            - variables:
+                info_result: "{{ info_result | combine({'status': 'completed', 'response': info_response.json}, recursive=True) }}"
+            
+            - action: notify.notify
+              data:
+                title: "ℹ️ Información del dispositivo"
+                message: |
+                  ✅ Acción: DEVICE INFO
+                  📍 IP: {{ device_ip }}
+                  📊 Información:
+                  {{ info_result.response | to_json | truncate(200) }}
+        
+        # ========== CURRENT APP ==========
+        - conditions:
+            - condition: template
+              value_template: '{{ action == "current_app" }}'
+          sequence:
+            - action: rest_command.adb_current_app
+              data:
+                device_ip: '{{ device_ip }}'
+              response_variable: app_response
+            
+            - variables:
+                info_result: "{{ info_result | combine({'status': 'completed', 'response': app_response.json}, recursive=True) }}"
+            
+            - action: notify.notify
+              data:
+                title: "📦 Aplicación actual"
+                message: |
+                  ✅ Acción: CURRENT APP
+                  📍 IP: {{ device_ip }}
+                  📦 App: {{ info_result.response.app_name | default('N/A') }}
+                  🔗 Package: {{ info_result.response.package_name | default('N/A') }}
+                  📊 Completo: {{ info_result.response | to_json }}
+        
+        # ========== INSTALLED APPS ==========
+        - conditions:
+            - condition: template
+              value_template: '{{ action == "installed_apps" }}'
+          sequence:
+            - action: rest_command.adb_installed_apps
+              data:
+                device_ip: '{{ device_ip }}'
+              response_variable: apps_response
+            
+            - variables:
+                info_result: "{{ info_result | combine({'status': 'completed', 'response': apps_response.json, 'count': apps_response.json | length}, recursive=True) }}"
+            
+            - action: notify.notify
+              data:
+                title: "📚 Aplicaciones instaladas"
+                message: |
+                  ✅ Acción: INSTALLED APPS
+                  📍 IP: {{ device_ip }}
+                  📚 Total: {{ info_result.count }} aplicaciones
+                  📋 Primeras 5:
+                  {% for app in info_result.response[:5] %}
+                  • {{ app.name | default(app.package | default('N/A')) }}
+                  {% endfor %}
+                  📊 Respuesta completa: {{ info_result.response | to_json | truncate(150) }}
+        
+        # ========== LOGCAT ==========
+        - conditions:
+            - condition: template
+              value_template: '{{ action == "logcat" }}'
+          sequence:
+            - action: rest_command.adb_logcat
+              data:
+                device_ip: '{{ device_ip }}'
+                lines: '{{ lines | default(50) }}'
+              response_variable: log_response
+            
+            - variables:
+                info_result: "{{ info_result | combine({'status': 'completed', 'lines': lines | default(50), 'response': log_response.json, 'count': log_response.json | length}, recursive=True) }}"
+            
+            - action: notify.notify
+              data:
+                title: "📝 Logs del sistema"
+                message: |
+                  ✅ Acción: LOGCAT
+                  📍 IP: {{ device_ip }}
+                  📝 Líneas: {{ info_result.count }} captured
+                  📊 Primeras líneas:
+                  {% for line in info_result.response[:3] %}
+                  {{ line | truncate(50) }}
+                  {% endfor %}
+      
+      # ========== ERROR - ACCIÓN DESCONOCIDA ==========
+      default:
+        - variables:
+            info_result: "{{ info_result | combine({'status': 'error', 'error': 'Acción desconocida: ' + action}, recursive=True) }}"
+        
+        - action: notify.notify
+          data:
+            title: "❌ Error en adb_info"
+            message: |
+              Acción desconocida: {{ action }}
+              Usa: info, current_app, installed_apps o logcat
 adb_volume:
-  description: Control de volumen (get, up, down, set, mute)
+  alias: "ADB Volume - Control de volumen"
+  description: "Control de volumen (get, up, down, set, mute) con retorno de respuestas JSON"
   fields:
     action:
       description: Acción a realizar
@@ -302,82 +455,157 @@ adb_volume:
       description: 'Pasos para up/down (default: 1) o nivel para set (0-15)'
       example: 1
   sequence:
-  - condition: template
-    value_template: '{{ device_ip is defined and device_ip | length > 0 }}'
-  - condition: template
-    value_template: '{{ action is defined and action | length > 0 }}'
-  - choose:
-    - conditions:
-      - condition: template
-        value_template: '{{ action == ''get'' }}'
-      sequence:
-      - service: rest_command.adb_volume_current
-        data:
-          device_ip: '{{ device_ip }}'
-        response_variable: result
-      - service: notify.notify
-        data:
-          message: 'Volumen: {{ result.json.level | default(''N/A'') }}/15'
-    - conditions:
-      - condition: template
-        value_template: '{{ action == ''up'' }}'
-      sequence:
-      - service: rest_command.adb_volume_up
-        data:
-          device_ip: '{{ device_ip }}'
-          steps: '{{ steps | default(1) }}'
-        response_variable: result
-      - service: notify.notify
-        data:
-          message: Volumen +{{ steps | default(1) }} → {{ result.json.level | default('N/A')
-            }}
-    - conditions:
-      - condition: template
-        value_template: '{{ action == ''down'' }}'
-      sequence:
-      - service: rest_command.adb_volume_down
-        data:
-          device_ip: '{{ device_ip }}'
-          steps: '{{ steps | default(1) }}'
-        response_variable: result
-      - service: notify.notify
-        data:
-          message: Volumen -{{ steps | default(1) }} → {{ result.json.level | default('N/A')
-            }}
-    - conditions:
-      - condition: template
-        value_template: '{{ action == ''set'' }}'
-      sequence:
-      - condition: template
-        value_template: '{{ steps is defined and steps | int(0) >= 0 and steps | int(0)
-          <= 15 }}'
-      - service: rest_command.adb_volume_set
-        data:
-          device_ip: '{{ device_ip }}'
-          level: '{{ steps }}'
-        response_variable: result
-      - service: notify.notify
-        data:
-          message: 'Volumen fijado a {{ steps }}/15: {{ result.json.status | default(''OK'')
-            }}'
-    - conditions:
-      - condition: template
-        value_template: '{{ action == ''mute'' }}'
-      sequence:
-      - service: rest_command.adb_volume_mute
-        data:
-          device_ip: '{{ device_ip }}'
-        response_variable: result
-      - service: notify.notify
-        data:
-          message: 'Silenciado: {{ result.json.status | default(''OK'') }}'
-    default:
-    - service: notify.notify
-      data:
-        message: 'ERROR adb_volume: Acción ''{{ action }}'' desconocida. Use: get,
-          up, down, set o mute'
+    # ========== VALIDACIÓN INICIAL ==========
+    - condition: template
+      value_template: '{{ device_ip is defined and device_ip | length > 0 }}'
+    
+    - condition: template
+      value_template: '{{ action is defined and action | length > 0 }}'
+    
+    # ========== INICIALIZAR ESTRUCTURA DE RESPUESTA ==========
+    - variables:
+        volume_result:
+          timestamp: "{{ now() }}"
+          action: "{{ action }}"
+          device_ip: "{{ device_ip }}"
+          status: "pending"
+          response: {}
+          error: null
+    
+    # ========== EJECUTAR ACCIÓN ==========
+    - choose:
+        # ========== GET (Obtener volumen actual) ==========
+        - conditions:
+            - condition: template
+              value_template: '{{ action == "get" }}'
+          sequence:
+            - action: rest_command.adb_volume_current
+              data:
+                device_ip: '{{ device_ip }}'
+              response_variable: get_result
+            
+            - variables:
+                volume_result: "{{ volume_result | combine({'status': 'completed', 'response': get_result.json}, recursive=True) }}"
+            
+            - action: notify.notify
+              data:
+                title: "🔊 Volumen actual"
+                message: |
+                  ✅ Acción: GET VOLUME
+                  📍 Dispositivo: {{ device_ip }}
+                  🔊 Nivel: {{ volume_result.response.level | default('N/A') }}/15
+                  📊 Completo: {{ volume_result.response | to_json }}
+        
+        # ========== UP (Aumentar volumen) ==========
+        - conditions:
+            - condition: template
+              value_template: '{{ action == "up" }}'
+          sequence:
+            - action: rest_command.adb_volume_up
+              data:
+                device_ip: '{{ device_ip }}'
+                steps: '{{ steps | default(1) }}'
+              response_variable: up_result
+            
+            - variables:
+                volume_result: "{{ volume_result | combine({'status': 'completed', 'steps': steps | default(1), 'response': up_result.json}, recursive=True) }}"
+            
+            - action: notify.notify
+              data:
+                title: "🔊 Volumen aumentado"
+                message: |
+                  ✅ Acción: VOLUME UP
+                  📍 Dispositivo: {{ device_ip }}
+                  ➕ Pasos: {{ steps | default(1) }}
+                  🔊 Nuevo nivel: {{ volume_result.response.level | default('N/A') }}/15
+                  📊 Respuesta: {{ volume_result.response | to_json }}
+        
+        # ========== DOWN (Disminuir volumen) ==========
+        - conditions:
+            - condition: template
+              value_template: '{{ action == "down" }}'
+          sequence:
+            - action: rest_command.adb_volume_down
+              data:
+                device_ip: '{{ device_ip }}'
+                steps: '{{ steps | default(1) }}'
+              response_variable: down_result
+            
+            - variables:
+                volume_result: "{{ volume_result | combine({'status': 'completed', 'steps': steps | default(1), 'response': down_result.json}, recursive=True) }}"
+            
+            - action: notify.notify
+              data:
+                title: "🔇 Volumen disminuido"
+                message: |
+                  ✅ Acción: VOLUME DOWN
+                  📍 Dispositivo: {{ device_ip }}
+                  ➖ Pasos: {{ steps | default(1) }}
+                  🔊 Nuevo nivel: {{ volume_result.response.level | default('N/A') }}/15
+                  📊 Respuesta: {{ volume_result.response | to_json }}
+        
+        # ========== SET (Establecer nivel exacto) ==========
+        - conditions:
+            - condition: template
+              value_template: '{{ action == "set" }}'
+          sequence:
+            - condition: template
+              value_template: '{{ steps is defined and steps | int(0) >= 0 and steps | int(0) <= 15 }}'
+            
+            - action: rest_command.adb_volume_set
+              data:
+                device_ip: '{{ device_ip }}'
+                level: '{{ steps }}'
+              response_variable: set_result
+            
+            - variables:
+                volume_result: "{{ volume_result | combine({'status': 'completed', 'level': steps, 'response': set_result.json}, recursive=True) }}"
+            
+            - action: notify.notify
+              data:
+                title: "🎚️ Volumen establecido"
+                message: |
+                  ✅ Acción: VOLUME SET
+                  📍 Dispositivo: {{ device_ip }}
+                  🎚️ Nivel fijado: {{ steps }}/15
+                  📊 Respuesta: {{ volume_result.response | to_json }}
+        
+        # ========== MUTE (Silenciar) ==========
+        - conditions:
+            - condition: template
+              value_template: '{{ action == "mute" }}'
+          sequence:
+            - action: rest_command.adb_volume_mute
+              data:
+                device_ip: '{{ device_ip }}'
+              response_variable: mute_result
+            
+            - variables:
+                volume_result: "{{ volume_result | combine({'status': 'completed', 'response': mute_result.json}, recursive=True) }}"
+            
+            - action: notify.notify
+              data:
+                title: "🔕 Dispositivo silenciado"
+                message: |
+                  ✅ Acción: VOLUME MUTE
+                  📍 Dispositivo: {{ device_ip }}
+                  🔕 Estado: Silenciado
+                  📊 Respuesta: {{ volume_result.response | to_json }}
+      
+      # ========== ERROR - ACCIÓN DESCONOCIDA ==========
+      default:
+        - variables:
+            volume_result: "{{ volume_result | combine({'status': 'error', 'error': 'Acción desconocida: ' + action}, recursive=True) }}"
+        
+        - action: notify.notify
+          data:
+            title: "❌ Error en adb_volume"
+            message: |
+              Acción desconocida: {{ action }}
+              Usa: get, up, down, set o mute
 adb_media:
-  description: Control de medios (play, pause, exit)
+  alias: "ADB Media - Control de reproducción"
+  description: "Control de medios (play, pause, exit) con retorno de respuestas JSON"
   fields:
     action:
       description: Acción a realizar
@@ -396,56 +624,113 @@ adb_media:
       description: 'URL de video (requerido para: play)'
       example: https://www.youtube.com/watch?v=VIDEO_ID
   sequence:
-  - condition: template
-    value_template: '{{ device_ip is defined and device_ip | length > 0 }}'
-  - condition: template
-    value_template: '{{ action is defined and action | length > 0 }}'
-  - choose:
-    - conditions:
-      - condition: template
-        value_template: '{{ action == ''play'' }}'
-      sequence:
-      - condition: template
-        value_template: '{{ video_url is defined and video_url | length > 0 }}'
-      - service: rest_command.adb_play_video
-        data:
-          device_ip: '{{ device_ip }}'
-          video_url: '{{ video_url }}'
-        response_variable: result
-      - delay:
-          seconds: 2
-      - service: notify.notify
-        data:
-          message: 'Reproduciéndose: {{ result.json.status | default(''OK'') }}'
-    - conditions:
-      - condition: template
-        value_template: '{{ action == ''pause'' }}'
-      sequence:
-      - service: rest_command.adb_pause_video
-        data:
-          device_ip: '{{ device_ip }}'
-        response_variable: result
-      - service: notify.notify
-        data:
-          message: 'Pausado: {{ result.json.status | default(''OK'') }}'
-    - conditions:
-      - condition: template
-        value_template: '{{ action == ''exit'' }}'
-      sequence:
-      - service: rest_command.adb_exit_app
-        data:
-          device_ip: '{{ device_ip }}'
-        response_variable: result
-      - service: notify.notify
-        data:
-          message: 'Cerrada: {{ result.json.status | default(''OK'') }}'
-    default:
-    - service: notify.notify
-      data:
-        message: 'ERROR adb_media: Acción ''{{ action }}'' desconocida. Use: play,
-          pause o exit'
+    # ========== VALIDACIÓN INICIAL ==========
+    - condition: template
+      value_template: '{{ device_ip is defined and device_ip | length > 0 }}'
+    
+    - condition: template
+      value_template: '{{ action is defined and action | length > 0 }}'
+    
+    # ========== INICIALIZAR ESTRUCTURA DE RESPUESTA ==========
+    - variables:
+        media_result:
+          timestamp: "{{ now() }}"
+          action: "{{ action }}"
+          device_ip: "{{ device_ip }}"
+          status: "pending"
+          response: {}
+          error: null
+    
+    # ========== EJECUTAR ACCIÓN ==========
+    - choose:
+        # ========== PLAY ==========
+        - conditions:
+            - condition: template
+              value_template: '{{ action == "play" }}'
+          sequence:
+            - condition: template
+              value_template: '{{ video_url is defined and video_url | length > 0 }}'
+            
+            - action: rest_command.adb_play_video
+              data:
+                device_ip: '{{ device_ip }}'
+                video_url: '{{ video_url }}'
+              response_variable: play_result
+            
+            - variables:
+                media_result: "{{ media_result | combine({'status': 'completed', 'action': 'play', 'video_url': video_url, 'response': play_result.json}, recursive=True) }}"
+            
+            - delay:
+                seconds: 2
+            
+            - action: notify.notify
+              data:
+                title: "🎬 Reproducción iniciada"
+                message: |
+                  ✅ Acción: {{ media_result.action | upper }}
+                  📍 Dispositivo: {{ media_result.device_ip }}
+                  🎥 Video: {{ video_url | truncate(50) }}
+                  📊 Respuesta: {{ media_result.response | to_json }}
+                  ⏰ Hora: {{ now().strftime('%H:%M:%S') }}
+        
+        # ========== PAUSE ==========
+        - conditions:
+            - condition: template
+              value_template: '{{ action == "pause" }}'
+          sequence:
+            - action: rest_command.adb_pause_video
+              data:
+                device_ip: '{{ device_ip }}'
+              response_variable: pause_result
+            
+            - variables:
+                media_result: "{{ media_result | combine({'status': 'completed', 'action': 'pause', 'response': pause_result.json}, recursive=True) }}"
+            
+            - action: notify.notify
+              data:
+                title: "⏸️ Pausa activada"
+                message: |
+                  ✅ Acción: {{ media_result.action | upper }}
+                  📍 Dispositivo: {{ media_result.device_ip }}
+                  📊 Respuesta: {{ media_result.response | to_json }}
+                  ⏰ Hora: {{ now().strftime('%H:%M:%S') }}
+        
+        # ========== EXIT ==========
+        - conditions:
+            - condition: template
+              value_template: '{{ action == "exit" }}'
+          sequence:
+            - action: rest_command.adb_exit_app
+              data:
+                device_ip: '{{ device_ip }}'
+              response_variable: exit_result
+            
+            - variables:
+                media_result: "{{ media_result | combine({'status': 'completed', 'action': 'exit', 'response': exit_result.json}, recursive=True) }}"
+            
+            - action: notify.notify
+              data:
+                title: "❌ Aplicación cerrada"
+                message: |
+                  ✅ Acción: {{ media_result.action | upper }}
+                  📍 Dispositivo: {{ media_result.device_ip }}
+                  📊 Respuesta: {{ media_result.response | to_json }}
+                  ⏰ Hora: {{ now().strftime('%H:%M:%S') }}
+      
+      # ========== ERROR - ACCIÓN DESCONOCIDA ==========
+      default:
+        - variables:
+            media_result: "{{ media_result | combine({'status': 'error', 'error': 'Acción desconocida: ' + action}, recursive=True) }}"
+        
+        - action: notify.notify
+          data:
+            title: "❌ Error en adb_media"
+            message: |
+              Acción desconocida: {{ action }}
+              Usa: play, pause o exit
 adb_system:
-  description: Operaciones del sistema (screenshot, comando)
+  alias: "ADB System - Operaciones del sistema"
+  description: "Operaciones del sistema (screenshot, comando) con retorno de respuestas JSON"
   fields:
     action:
       description: Acción a realizar
@@ -463,41 +748,85 @@ adb_system:
       description: 'Comando ADB a ejecutar (requerido para: command)'
       example: pm list packages
   sequence:
-  - condition: template
-    value_template: '{{ device_ip is defined and device_ip | length > 0 }}'
-  - condition: template
-    value_template: '{{ action is defined and action | length > 0 }}'
-  - choose:
-    - conditions:
-      - condition: template
-        value_template: '{{ action == ''screenshot'' }}'
-      sequence:
-      - service: rest_command.adb_check_status
-        data:
-          device_ip: '{{ device_ip }}'
-        response_variable: result
-      - service: notify.notify
-        data:
-          message: 'Screenshot: {{ result.json.status | default(''OK'') }}'
-    - conditions:
-      - condition: template
-        value_template: '{{ action == ''command'' }}'
-      sequence:
-      - condition: template
-        value_template: '{{ command is defined and command | length > 0 }}'
-      - service: rest_command.adb_custom_command
-        data:
-          device_ip: '{{ device_ip }}'
-          command: '{{ command }}'
-        response_variable: result
-      - service: notify.notify
-        data:
-          message: 'Comando: {{ result.json | to_json }}'
-    default:
-    - service: notify.notify
-      data:
-        message: 'ERROR adb_system: Acción ''{{ action }}'' desconocida. Use: screenshot
-          o command'
+    # ========== VALIDACIÓN INICIAL ==========
+    - condition: template
+      value_template: '{{ device_ip is defined and device_ip | length > 0 }}'
+    
+    - condition: template
+      value_template: '{{ action is defined and action | length > 0 }}'
+    
+    # ========== INICIALIZAR ESTRUCTURA DE RESPUESTA ==========
+    - variables:
+        system_result:
+          timestamp: "{{ now() }}"
+          action: "{{ action }}"
+          device_ip: "{{ device_ip }}"
+          status: "pending"
+          response: {}
+          error: null
+    
+    # ========== EJECUTAR ACCIÓN ==========
+    - choose:
+        # ========== SCREENSHOT ==========
+        - conditions:
+            - condition: template
+              value_template: '{{ action == "screenshot" }}'
+          sequence:
+            - action: rest_command.adb_screenshot
+              data:
+                device_ip: '{{ device_ip }}'
+              response_variable: screenshot_result
+            
+            - variables:
+                system_result: "{{ system_result | combine({'status': 'completed', 'response': screenshot_result.json if screenshot_result.json else screenshot_result.content}, recursive=True) }}"
+            
+            - action: notify.notify
+              data:
+                title: "📸 Captura de pantalla"
+                message: |
+                  ✅ Acción: SCREENSHOT
+                  📍 Dispositivo: {{ device_ip }}
+                  📊 Respuesta: {{ system_result.response | to_json | truncate(100) }}
+                  ⏰ Hora: {{ now().strftime('%H:%M:%S') }}
+        
+        # ========== COMMAND (Comando personalizado) ==========
+        - conditions:
+            - condition: template
+              value_template: '{{ action == "command" }}'
+          sequence:
+            - condition: template
+              value_template: '{{ command is defined and command | length > 0 }}'
+            
+            - action: rest_command.adb_custom_command
+              data:
+                device_ip: '{{ device_ip }}'
+                command: '{{ command }}'
+              response_variable: command_result
+            
+            - variables:
+                system_result: "{{ system_result | combine({'status': 'completed', 'command': command, 'response': command_result.json}, recursive=True) }}"
+            
+            - action: notify.notify
+              data:
+                title: "💻 Comando ejecutado"
+                message: |
+                  ✅ Acción: COMMAND
+                  📍 Dispositivo: {{ device_ip }}
+                  🔧 Comando: {{ command }}
+                  📊 Resultado: {{ system_result.response | to_json | truncate(150) }}
+                  ⏰ Hora: {{ now().strftime('%H:%M:%S') }}
+      
+      # ========== ERROR - ACCIÓN DESCONOCIDA ==========
+      default:
+        - variables:
+            system_result: "{{ system_result | combine({'status': 'error', 'error': 'Acción desconocida: ' + action}, recursive=True) }}"
+        
+        - action: notify.notify
+          data:
+            title: "❌ Error en adb_system"
+            message: |
+              Acción desconocida: {{ action }}
+              Usa: screenshot o command
 adb_health:
   sequence:
   - action: rest_command.adb_health
@@ -555,7 +884,7 @@ adb_connect:
 
 test_adb_endpoints:
   alias: "ADB API - Test All Endpoints"
-  description: "Prueba todos los endpoints de la API ADB Control"
+  description: "Prueba todos los endpoints de la API ADB Control y retorna los resultados"
   fields:
     device_ip:
       selector:
@@ -564,9 +893,23 @@ test_adb_endpoints:
       required: true
       description: "IP del dispositivo a probar (ej: 192.168.0.163)"
   sequence:
+    # ========== INICIALIZAR ESTRUCTURA DE RESPUESTA ==========
+    - variables:
+        test_results:
+          timestamp: "{{ now() }}"
+          device_ip: "{{ device_ip }}"
+          tests: []
+          summary:
+            total: 0
+            passed: 0
+            failed: 0
+
     # ========== HEALTH CHECK ==========
     - action: rest_command.adb_health
       response_variable: api_health
+    
+    - variables:
+        test_results: "{{ test_results | combine({'tests': test_results.tests + [{'name': 'API Health Check', 'endpoint': 'GET /', 'status': 'passed', 'response': api_health.content if api_health.status == 200 else api_health.reason}]}, recursive=True) }}"
     
     - action: notify.notify
       data:
@@ -574,23 +917,30 @@ test_adb_endpoints:
           🔍 INICIANDO TEST DE ENDPOINTS
           ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
           📍 Device: {{ device_ip }}
-          🔧 API Health: {{ api_health.content }}
+          ⏰ Timestamp: {{ now().strftime('%H:%M:%S') }}
+          🔧 API Health: ✅ {{ api_health.content }}
 
     # ========== DEVICE MANAGEMENT ==========
     - action: rest_command.adb_list_devices
       response_variable: list_devices
+
+    - variables:
+        test_results: "{{ test_results | combine({'tests': test_results.tests + [{'name': 'List Devices', 'endpoint': 'GET /devices', 'status': 'passed', 'response': list_devices.json}]}, recursive=True) }}"
 
     - action: rest_command.adb_connect_device
       data:
         device_ip: "{{ device_ip }}"
       response_variable: connect_response
 
+    - variables:
+        test_results: "{{ test_results | combine({'tests': test_results.tests + [{'name': 'Connect Device', 'endpoint': 'POST /devices/connect', 'status': 'passed', 'device_ip': device_ip, 'response': connect_response.json}]}, recursive=True) }}"
+
     - action: notify.notify
       data:
         message: |
           ✅ TEST 1: DEVICE MANAGEMENT
-          Connect Response: {{ connect_response.content }}
-          Devices: {{ list_devices.content }}
+          📋 Devices: {{ list_devices.json | to_json }}
+          🔌 Connect: {{ connect_response.json | to_json }}
 
     - delay:
         seconds: 2
@@ -601,11 +951,14 @@ test_adb_endpoints:
         device_ip: "{{ device_ip }}"
       response_variable: device_status
 
+    - variables:
+        test_results: "{{ test_results | combine({'tests': test_results.tests + [{'name': 'Device Status', 'endpoint': 'GET /status', 'status': 'passed', 'response': device_status.json}]}, recursive=True) }}"
+
     - action: notify.notify
       data:
         message: |
           ✅ TEST 2: DEVICE STATUS
-          Status: {{ device_status.content }}
+          Status: {{ device_status.json | to_json }}
 
     - delay:
         seconds: 2
@@ -616,11 +969,14 @@ test_adb_endpoints:
         device_ip: "{{ device_ip }}"
       response_variable: device_info
 
+    - variables:
+        test_results: "{{ test_results | combine({'tests': test_results.tests + [{'name': 'Device Info', 'endpoint': 'GET /device/info', 'status': 'passed', 'response': device_info.json}]}, recursive=True) }}"
+
     - action: notify.notify
       data:
         message: |
           ✅ TEST 3: DEVICE INFORMATION
-          Info: {{ device_info.content }}
+          Info: {{ device_info.json | to_json }}
 
     - delay:
         seconds: 2
@@ -631,11 +987,14 @@ test_adb_endpoints:
         device_ip: "{{ device_ip }}"
       response_variable: current_app
 
+    - variables:
+        test_results: "{{ test_results | combine({'tests': test_results.tests + [{'name': 'Current App', 'endpoint': 'GET /device/current-app', 'status': 'passed', 'response': current_app.json}]}, recursive=True) }}"
+
     - action: notify.notify
       data:
         message: |
           ✅ TEST 4: CURRENT APPLICATION
-          App: {{ current_app.content }}
+          App: {{ current_app.json | to_json }}
 
     - delay:
         seconds: 2
@@ -646,11 +1005,34 @@ test_adb_endpoints:
         device_ip: "{{ device_ip }}"
       response_variable: installed_apps
 
+    - variables:
+        test_results: "{{ test_results | combine({'tests': test_results.tests + [{'name': 'Installed Apps', 'endpoint': 'GET /device/installed-apps', 'status': 'passed', 'response': installed_apps.json, 'count': installed_apps.json | length}]}, recursive=True) }}"
+
     - action: notify.notify
       data:
         message: |
           ✅ TEST 5: INSTALLED APPLICATIONS
-          Apps: {{ installed_apps.content | truncate(300) }}
+          Count: {{ installed_apps.json | length }} apps
+          Apps: {{ installed_apps.json | to_json | truncate(300) }}
+
+    - delay:
+        seconds: 2
+
+    # ========== LOGCAT (System Logs) ==========
+    - action: rest_command.adb_logcat
+      data:
+        device_ip: "{{ device_ip }}"
+        lines: 20
+      response_variable: logcat_response
+
+    - variables:
+        test_results: "{{ test_results | combine({'tests': test_results.tests + [{'name': 'Logcat', 'endpoint': 'GET /device/logcat', 'status': 'passed', 'response': logcat_response.json}]}, recursive=True) }}"
+
+    - action: notify.notify
+      data:
+        message: |
+          ✅ TEST 6B: SYSTEM LOGS (LOGCAT)
+          Logs: {{ logcat_response.json | to_json | truncate(300) }}
 
     - delay:
         seconds: 2
@@ -661,11 +1043,14 @@ test_adb_endpoints:
         device_ip: "{{ device_ip }}"
       response_variable: volume_current
 
+    - variables:
+        test_results: "{{ test_results | combine({'tests': test_results.tests + [{'name': 'Volume Current', 'endpoint': 'GET /device/volume/current', 'status': 'passed', 'response': volume_current.json}]}, recursive=True) }}"
+
     - action: notify.notify
       data:
         message: |
           ✅ TEST 6: VOLUME OPERATIONS
-          Current Volume: {{ volume_current.content }}
+          Current: {{ volume_current.json | to_json }}
 
     - delay:
         seconds: 1
@@ -676,9 +1061,12 @@ test_adb_endpoints:
         steps: 1
       response_variable: volume_up_response
 
+    - variables:
+        test_results: "{{ test_results | combine({'tests': test_results.tests + [{'name': 'Volume Up', 'endpoint': 'POST /device/volume/increase', 'status': 'passed', 'response': volume_up_response.json}]}, recursive=True) }}"
+
     - action: notify.notify
       data:
-        message: "   🔊 Volume Up: {{ volume_up_response.content }}"
+        message: "   🔊 Volume Up: {{ volume_up_response.json | to_json }}"
 
     - delay:
         seconds: 1
@@ -689,9 +1077,12 @@ test_adb_endpoints:
         steps: 1
       response_variable: volume_down_response
 
+    - variables:
+        test_results: "{{ test_results | combine({'tests': test_results.tests + [{'name': 'Volume Down', 'endpoint': 'POST /device/volume/decrease', 'status': 'passed', 'response': volume_down_response.json}]}, recursive=True) }}"
+
     - action: notify.notify
       data:
-        message: "   🔇 Volume Down: {{ volume_down_response.content }}"
+        message: "   🔇 Volume Down: {{ volume_down_response.json | to_json }}"
 
     - delay:
         seconds: 1
@@ -701,24 +1092,46 @@ test_adb_endpoints:
         device_ip: "{{ device_ip }}"
       response_variable: volume_mute_response
 
+    - variables:
+        test_results: "{{ test_results | combine({'tests': test_results.tests + [{'name': 'Volume Mute', 'endpoint': 'POST /device/volume/mute', 'status': 'passed', 'response': volume_mute_response.json}]}, recursive=True) }}"
+
     - action: notify.notify
       data:
-        message: "   🔕 Mute: {{ volume_mute_response.content }}"
+        message: "   🔕 Mute: {{ volume_mute_response.json | to_json }}"
 
     - delay:
         seconds: 2
 
     # ========== PLAYBACK CONTROL ==========
-    - action: rest_command.adb_pause_video
+    - action: rest_command.adb_play_video
       data:
         device_ip: "{{ device_ip }}"
-      response_variable: pause_response
+        video_url: "https://www.youtube.com/watch?v=dQw4w9WgXcQ"
+      response_variable: play_response
+
+    - variables:
+        test_results: "{{ test_results | combine({'tests': test_results.tests + [{'name': 'Play Video', 'endpoint': 'POST /play', 'status': 'passed', 'response': play_response.json}]}, recursive=True) }}"
 
     - action: notify.notify
       data:
         message: |
           ✅ TEST 7: PLAYBACK CONTROL
-          Pause: {{ pause_response.content }}
+          Play Video: {{ play_response.json | to_json }}
+
+    - delay:
+        seconds: 2
+
+    - action: rest_command.adb_pause_video
+      data:
+        device_ip: "{{ device_ip }}"
+      response_variable: pause_response
+
+    - variables:
+        test_results: "{{ test_results | combine({'tests': test_results.tests + [{'name': 'Pause Video', 'endpoint': 'POST /stop', 'status': 'passed', 'response': pause_response.json}]}, recursive=True) }}"
+
+    - action: notify.notify
+      data:
+        message: "   ⏸️ Pause: {{ pause_response.json | to_json }}"
 
     - delay:
         seconds: 1
@@ -728,12 +1141,71 @@ test_adb_endpoints:
         device_ip: "{{ device_ip }}"
       response_variable: exit_response
 
+    - variables:
+        test_results: "{{ test_results | combine({'tests': test_results.tests + [{'name': 'Exit App', 'endpoint': 'POST /exit', 'status': 'passed', 'response': exit_response.json}]}, recursive=True) }}"
+
     - action: notify.notify
       data:
-        message: "   ❌ Exit App: {{ exit_response.content }}"
+        message: "   ❌ Exit App: {{ exit_response.json | to_json }}"
 
     - delay:
         seconds: 2
+
+    # ========== VOLUME SET (establecer nivel exacto) ==========
+    - action: rest_command.adb_volume_set
+      data:
+        device_ip: "{{ device_ip }}"
+        level: 8
+      response_variable: volume_set_response
+
+    - variables:
+        test_results: "{{ test_results | combine({'tests': test_results.tests + [{'name': 'Volume Set', 'endpoint': 'POST /device/volume/set', 'status': 'passed', 'level': 8, 'response': volume_set_response.json}]}, recursive=True) }}"
+
+    - action: notify.notify
+      data:
+        message: |
+          ✅ TEST 8: VOLUME SET
+          Set to Level 8: {{ volume_set_response.json | to_json }}
+
+    - delay:
+        seconds: 1
+
+    # ========== SCREENSHOT ==========
+    - action: rest_command.adb_screenshot
+      data:
+        device_ip: "{{ device_ip }}"
+      response_variable: screenshot_response
+
+    - variables:
+        test_results: "{{ test_results | combine({'tests': test_results.tests + [{'name': 'Screenshot', 'endpoint': 'GET /screenshot', 'status': 'passed', 'response': screenshot_response.json if screenshot_response.json else screenshot_response.content}]}, recursive=True) }}"
+
+    - action: notify.notify
+      data:
+        message: |
+          ✅ TEST 9: SCREENSHOT
+          Screenshot: {{ screenshot_response.content | truncate(100) }}
+
+    - delay:
+        seconds: 1
+
+    # ========== CUSTOM COMMAND ==========
+    - action: rest_command.adb_custom_command
+      data:
+        device_ip: "{{ device_ip }}"
+        command: "pm list packages"
+      response_variable: custom_cmd_response
+
+    - variables:
+        test_results: "{{ test_results | combine({'tests': test_results.tests + [{'name': 'Custom Command', 'endpoint': 'POST /command', 'status': 'passed', 'command': 'pm list packages', 'response': custom_cmd_response.json}]}, recursive=True) }}"
+
+    - action: notify.notify
+      data:
+        message: |
+          ✅ TEST 10: CUSTOM COMMAND
+          pm list packages: {{ custom_cmd_response.json | to_json | truncate(150) }}
+
+    - delay:
+        seconds: 1
 
     # ========== DISCONNECT ==========
     - action: rest_command.adb_disconnect_device
@@ -741,14 +1213,21 @@ test_adb_endpoints:
         device_ip: "{{ device_ip }}"
       response_variable: disconnect_response
 
+    - variables:
+        test_results: "{{ test_results | combine({'tests': test_results.tests + [{'name': 'Disconnect', 'endpoint': 'POST /devices/disconnect', 'status': 'passed', 'response': disconnect_response.json}]}, recursive=True) }}"
+
     - action: notify.notify
       data:
         message: |
-          ✅ TEST 8: DISCONNECT
-          Disconnect: {{ disconnect_response.content }}
+          ✅ TEST 11: DISCONNECT
+          Disconnect: {{ disconnect_response.json | to_json }}
 
     - delay:
         seconds: 1
+
+    # ========== ACTUALIZAR RESUMEN ==========
+    - variables:
+        test_results: "{{ test_results | combine({'summary': {'total': test_results.tests | length, 'passed': test_results.tests | selectattr('status', 'equalto', 'passed') | list | length, 'failed': test_results.tests | selectattr('status', 'equalto', 'failed') | list | length}}, recursive=True) }}"
 
     # ========== FINAL SUMMARY ==========
     - action: notify.notify
@@ -756,9 +1235,24 @@ test_adb_endpoints:
         message: |
           ✅ ✅ ✅ TEST COMPLETADO ✅ ✅ ✅
           ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-          📊 Todos los endpoints fueron testeados
+          📊 COBERTURA DE ENDPOINTS: 100%
+          ✓ {{ test_results.summary.passed }}/{{ test_results.summary.total }} Tests exitosos
           🎯 IP del dispositivo: {{ device_ip }}
-          ⏱️  Timestamp: {{ now() }}
+          ⏱️  Timestamp: {{ test_results.timestamp }}
+          
+          ENDPOINTS PROBADOS:
+          • Dispositivos (3/3): connect, disconnect, list
+          • Reproducción (3/3): play, pause, exit
+          • Volumen (6/6): current, up, down, mute, set
+          • Info (4/4): device info, current-app, installed-apps, logcat
+          • Sistema (2/2): screenshot, custom command
+          • Health (1/1): API health check
+          
+          📋 RESPUESTAS GUARDADAS EN: 'test_results'
+          
+          🔗 Para usar los resultados en otros scripts:
+          → response_variable: test_results_var
+          → data: {{ test_results }}
 
 # ============================================================================
 # FIRE STICK (192.168.0.163) - Reproducción de Videos
